@@ -1,6 +1,12 @@
 # MSTAR-Active-Learning
 
-Python package for MSTAR data. To load the data in Python and display some images, run the code below.
+Python package for MSTAR data. To clone the package
+
+```
+git clone git@github.com:jwcalder/MSTAR-Active-Learning.git
+```
+
+To load the data in Python and display some images, run the code below.
 
 ```
 import utils
