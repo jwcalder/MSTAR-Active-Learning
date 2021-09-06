@@ -1,8 +1,3 @@
-# MSTAR-Active-Learning
-
-Python package for MSTAR data. To load the data in Python and display some images
-
-```
 import utils
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,4 +14,3 @@ for i in range(numx):
         axs[i,j].imshow(img,cmap='gray')
         axs[i,j].set_title(hdr[R[i],0])
 plt.show()
-```
