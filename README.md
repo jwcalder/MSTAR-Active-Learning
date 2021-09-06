@@ -1,6 +1,6 @@
 # MSTAR-Active-Learning
 
-Python package for MSTAR data. To clone the package
+Python package for MSTAR data. To clone the package, run the command
 
 ```
 git clone git@github.com:jwcalder/MSTAR-Active-Learning.git
