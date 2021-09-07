@@ -179,7 +179,6 @@ for file in zipfiles:
 #Convert all MSTAR files to raw format
 cwd = os.getcwd()
 mstar2raw = os.path.join(cwd,'mstar2raw','mstar2raw')
-print(mstar2raw)
 for subdir, dirs, files in os.walk(MSTAR_dir):
     for file in files:
         if file.startswith('H') and (not file.endswith(('JPG','all','hdr','mag'))):
