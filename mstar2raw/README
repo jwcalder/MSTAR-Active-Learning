@@ -1,0 +1,52 @@
+                                  [MSTAR2RAW]
+                       (Version 2.0, 25 September 1998)
+
+Program Description:
+
+   This routine allows you to convert MSTAR target chip
+   and full scene image files to two output files:
+
+          RAW binary data file (MAG+PHASE or MAG only)
+          ASCII Phoenix header file
+
+   This routine will perform byteorder checking and 
+   byteswap the input data when necessary to facilitate
+   processing on PC-Intel systems.
+
+Program Usage:
+
+     mstar2raw <MSTAR Input> <Output Option>
+
+      where: Output Option = [0], Dump ALL data
+                             [1], Dump MAGNITUDE data only
+
+Description of Arguments:
+
+  REQUIRED:
+           <MSTAR Input>   -- Input file in MSTAR format
+           <Output Option> -- Output data option [0 or 1]
+
+Files Necessary to Compile:
+
+     * Include : none
+     * Library : none 
+     * Source  : mstar2raw.c
+     * Make    : mstar2raw.mk (optional)
+
+
+Compiling and Linking Code:
+
+   You can compile mstar2raw either from the command line or by using the 
+   included makefile (note: .mk file).
+
+   a) Command line Method:
+
+        % gcc -o mstar2raw mstar2raw.c [enter]
+      
+      NOTE: You can use other C compilers. Edit .mk file as necessary.
+
+   b) Using the Makefile [mstar2raw.mk]:
+
+      Perform the following steps:
+
+        % make -f mstar2raw.mk       [Creates executable: mstar2raw]
