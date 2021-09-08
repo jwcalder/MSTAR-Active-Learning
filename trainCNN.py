@@ -98,11 +98,11 @@ scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
 #Main training loop
 for epoch in range(1, epochs + 1):
-  train(model, device, data_train, target_train, optimizer, epoch, batch_size)
-  print('\nEpoch: %d'%epoch)
-  test_acc = test(model, device, data_test, target_test, 'Test ')
-  train_acc = test(model, device, data_train, target_train, 'Train')
-  scheduler.step()
+    train(model, device, data_train, target_train, optimizer, epoch, batch_size)
+    print('\nEpoch: %d'%epoch)
+    test_acc = test(model, device, data_test, target_test, 'Test ')
+    train_acc = test(model, device, data_train, target_train, 'Train')
+    scheduler.step()
 
 #Save model
 torch.save(model, os.path.join('models','SAR10_CNN_%d.pt'%len(train_idx)))
