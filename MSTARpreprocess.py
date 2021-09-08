@@ -1,6 +1,6 @@
 '''
-This script preprocess the MSTAR data from the raw format that 
-you can download from the MSTAR website 
+This script is for preprocessing the MSTAR data from the raw format 
+that you can download from the MSTAR website 
 
 https://www.sdms.afrl.af.mil/index.php?collection=mstar
 
@@ -25,8 +25,8 @@ data/SAR10c.npz
 
 The reason for 3 files instead of 1 is to ensure the file
 sizes are below the GitHub maximum of 100MB. These files
-are provided in GitHub, so this script does not need to be run.
-This script is solely provided for reproducibility of the code.
+are provided in GitHub, so this script does not need to be run,
+and is solely provided for reproducibility of the code.
 
 NOTE: This script requires a compiled binary for the c program
 mstar2raw. The c code is provided in the GitHub repository, in 
