@@ -38,9 +38,10 @@ def update_C_a(C_a, V, Q, gamma=0.1):
     C_a -= np.outer(Cavk, Cavk)/(gamma**2. + ip)
   return C_a
 
-def active_learning_loop(train_ind, labels, num_iter, C_a, method, gamma=0.1):
+def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, gamma=0.1):
   assert method in ['random','uncertainty','vopt','mc','mcvopt']
   accuracy = np.array([])
+  C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
 
   for i in range(num_iter+1):
     if i>0:
@@ -48,9 +49,9 @@ def active_learning_loop(train_ind, labels, num_iter, C_a, method, gamma=0.1):
       if method == 'random':
         train_ind = np.append(train_ind, np.random.choice(unlabeled_ind))
       else:
-        obj_vals = acquisition_function(C_a, v, unlabeled_ind, u, method, gamma=gamma)
+        obj_vals = acquisition_function(C_a, evecs, unlabeled_ind, u, method, gamma=gamma)
         new_train_ind = unlabeled_ind[np.argmax(obj_vals)]
-        C_a = update_C_a(C_a, v, [new_train_ind], gamma=gamma)
+        C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
         train_ind = np.append(train_ind, new_train_ind)
 
     u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm='laplace', return_vector=True)
@@ -102,7 +103,7 @@ if __name__ == "__main__":
   parser.add_argument("--M", type=int, default=50, help="number of eigenvalues to use in truncation")
   parser.add_argument("--gamma", type=float, default=0.5, help="gamma constant for Gaussian Regression covariance calculations")
   args = parser.parse_args()
-  
+
   # Toy example of running active learning code
   print(f"---------- Running toy example with {args.method.upper()} -----------")
   # Construct weight matrix and labels of the dataset
@@ -124,8 +125,7 @@ if __name__ == "__main__":
   np.random.seed()
 
   # Run Active Learning Test
-  C_a = np.linalg.inv(np.diag(d) + v[train_ind,:].T @ v[train_ind,:] / args.gamma**2.) # M by M covariance matrix
-  train_ind, accuracy = active_learning_loop(train_ind, labels, args.iters, C_a, args.method, gamma=args.gamma)
+  train_ind, accuracy = active_learning_loop(W, d, v, train_ind, labels, args.iters, args.method, gamma=args.gamma)
 
 
   if args.plot:
