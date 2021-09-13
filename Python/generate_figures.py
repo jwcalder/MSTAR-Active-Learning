@@ -19,7 +19,7 @@ styles = ['^b-','or-','dg-','sk-','pm-','xc-','*y-']
 ax = plt.figure().gca()
 
 #Laplace learning
-df = pd.read_csv(os.path.join('results','SAR10_CNN_laplace_accuracy.csv'))
+df = pd.read_csv('../results/SAR10_CNN_laplace_accuracy.csv')
 num_labels = df['Number of Labels'].values
 laplace_accuracy = df['Accuracy'].values
 ax.plot(num_labels,laplace_accuracy,styles[0],label='CNN & Laplace')
@@ -29,7 +29,7 @@ cnn_models, cnn_train_idx, cnn_num_train =  utils.get_cnn_models()
 cnn_accuracy = np.zeros_like(laplace_accuracy)
 max_cnn_accuracy = np.zeros_like(laplace_accuracy)
 for i in range(len(cnn_models)):
-    df = pd.read_csv(os.path.join('results','SAR10_CNN_%d_accuracy.csv'%cnn_num_train[i]))
+    df = pd.read_csv('../results/SAR10_CNN_%d_accuracy.csv'%cnn_num_train[i])
     acc = df['Test Accuracy'].values
     cnn_accuracy[i] = acc[-1]
     max_cnn_accuracy[i] = np.max(acc)
@@ -47,5 +47,5 @@ plt.grid(True)
 #ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 #Save figures
-plt.savefig(os.path.join('figures','CNN_Laplace.eps'))
-plt.savefig(os.path.join('figures','CNN_Laplace.pdf'))
+plt.savefig('../figures/CNN_Laplace.eps')
+plt.savefig('../figures/CNN_Laplace.pdf')

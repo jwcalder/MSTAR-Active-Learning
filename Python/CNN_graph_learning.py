@@ -20,7 +20,7 @@ cnn_models, cnn_train_idx, cnn_num_train =  utils.get_cnn_models()
 labels, target_names = utils.targets_to_labels(hdr)
 
 #Open results file to write accuracy
-f_laplace = open(os.path.join('results','SAR10_CNN_laplace_accuracy.csv'),"w")
+f_laplace = open('../results/SAR10_CNN_laplace_accuracy.csv',"w")
 f_laplace.write('Number of Labels,Accuracy\n')
 print('Number of Labels,Accuracy')
 
@@ -33,7 +33,7 @@ for model, fname_train_idx, num_train in zip(cnn_models, cnn_train_idx, cnn_num_
     #Check if knn data is saved, to save time
     #Dataset and metric name
     dataset = 'SAR10'
-    metric = model[13:-3]
+    metric = model[16:-3]
     try:
         I,J,D = gl.load_kNN_data(dataset,metric=metric)
     except:

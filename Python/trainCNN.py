@@ -112,7 +112,7 @@ for train_fraction in train_fraction_list:
     scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
     #Open results file to write accuracy
-    f = open(os.path.join('results','SAR10_CNN_%d_accuracy.csv'%len(train_idx)),"w")
+    f = open('../results/SAR10_CNN_%d_accuracy.csv'%len(train_idx),"w")
     f.write('Epoch,Test Accuracy,Train Accuracy\n')
 
     #Main training loop
@@ -126,10 +126,10 @@ for train_fraction in train_fraction_list:
 
     
     #Save model
-    torch.save(model, os.path.join('models','SAR10_CNN_%d.pt'%len(train_idx)))
+    torch.save('../models/SAR10_CNN_%d.pt'%len(train_idx))
 
     #Save specific training indices used to train the CNN
-    np.save(os.path.join('models',"SAR10_CNN_%d_training_indices"%len(train_idx)), train_idx)
+    np.save('../models/SAR10_CNN_%d_training_indices'%len(train_idx), train_idx)
 
 
 

@@ -26,8 +26,8 @@ def get_cnn_models(model_dir = 'models'):
 
 
     #Retrieve CNN model names and number of training points 
-    cnn_models = glob.glob('models/SAR10_CNN_*.pt')
-    cnn_num_train = [int(f[17:-3]) for f in cnn_models]
+    cnn_models = glob.glob('../models/SAR10_CNN_*.pt')
+    cnn_num_train = [int(f[20:-3]) for f in cnn_models]
 
     #Sort models by number of training points
     I = np.argsort(cnn_num_train)
@@ -52,12 +52,12 @@ def NormalizeData(data):
     norm_data = (data - np.min(data))/(np.max(data) - np.min(data))
     return norm_data
 
-def load_MSTAR(root_dir = 'data'):
+def load_MSTAR(root_dir = '../Data'):
     """Loads MSTAR Data
 
     Parameters
     ----------
-    root_dir : Root directory (default is data)
+    root_dir : Root directory (default is ../Data)
 
     Returns
     -------
