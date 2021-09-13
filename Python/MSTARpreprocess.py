@@ -9,9 +9,9 @@ There are several different zip files available. This script
 needs the following 3 zip files, and they should be placed
 at the locations below:
 
-data/MSTAR-PublicMixedTargets-CD1.zip
-data/MSTAR-PublicMixedTargets-CD2.zip
-data/MSTAR-PublicTargetChips-T72-BMP2-BTR70-SLICY.zip
+../Data/MSTAR-PublicMixedTargets-CD1.zip
+../Data/MSTAR-PublicMixedTargets-CD2.zip
+../Data/MSTAR-PublicTargetChips-T72-BMP2-BTR70-SLICY.zip
 
 The total size of the 3 zip files is around 900MB.
 
@@ -19,9 +19,9 @@ The script crops the magnitude and phase images to 88x88
 pixel images and saves the images and header information 
 to the files
 
-data/SAR10a.npz
-data/SAR10b.npz
-data/SAR10c.npz
+../Data/SAR10a.npz
+../Data/SAR10b.npz
+../Data/SAR10c.npz
 
 The reason for 3 files instead of 1 is to ensure the file
 sizes are below the GitHub maximum of 100MB. These files
@@ -165,7 +165,7 @@ def read_dir(root,count):
     return num,fields
 
 
-MSTAR_dir = 'data'
+MSTAR_dir = '../Data'
 zipfiles = ['MSTAR-PublicMixedTargets-CD1.zip',
             'MSTAR-PublicMixedTargets-CD2.zip',
             'MSTAR-PublicTargetChips-T72-BMP2-BTR70-SLICY.zip']
@@ -178,7 +178,7 @@ for file in zipfiles:
 
 #Convert all MSTAR files to raw format
 cwd = os.getcwd()
-mstar2raw = os.path.join(cwd,'mstar2raw','mstar2raw')
+mstar2raw = os.path.join(cwd,'../mstar2raw','mstar2raw')
 for subdir, dirs, files in os.walk(MSTAR_dir):
     for file in files:
         if file.startswith('H') and (not file.endswith(('JPG','all','hdr','mag'))):
