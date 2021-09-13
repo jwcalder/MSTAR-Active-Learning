@@ -126,7 +126,7 @@ for train_fraction in train_fraction_list:
 
     
     #Save model
-    torch.save('../models/SAR10_CNN_%d.pt'%len(train_idx))
+    torch.save(model,'../models/SAR10_CNN_%d.pt'%len(train_idx))
 
     #Save specific training indices used to train the CNN
     np.save('../models/SAR10_CNN_%d_training_indices'%len(train_idx), train_idx)
