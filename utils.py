@@ -3,10 +3,39 @@
 import numpy as np
 import torch
 import os
+import glob
 
 #Our package imports
 import models
 
+
+def get_cnn_models(model_dir = 'models'):
+    '''Returns a list of the CNN model names and number of training points
+
+    Parameters
+    ----------
+    model_dir : (optional, default = 'models')
+
+    Returns
+    -------
+    cnn_models : A python list of the strings containing all CNN models
+                 in model_dir ending in *.pt
+    cnn_train_idx : A pytyhon list of .npy files giving training points for each model
+    cnn_num_train : A python list giving the number of training points for each model
+    '''
+
+
+    #Retrieve CNN model names and number of training points 
+    cnn_models = glob.glob('models/SAR10_CNN_*.pt')
+    cnn_num_train = [int(f[17:-3]) for f in cnn_models]
+
+    #Sort models by number of training points
+    I = np.argsort(cnn_num_train)
+    cnn_num_train = [cnn_num_train[i] for i in I]
+    cnn_models = [cnn_models[i] for i in I]
+    cnn_train_idx = [cnn_models[i][:-3]+'_training_indices.npy' for i in range(len(I))]
+
+    return cnn_models, cnn_train_idx, cnn_num_train
 
 def NormalizeData(data):
     '''Normalizes data to range [0,1]

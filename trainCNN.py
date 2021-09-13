@@ -85,8 +85,10 @@ use_cuda = cuda and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 model = models.CNN().to(device)
 
+
 #Loop over different amounts of training data
 for train_fraction in train_fraction_list:
+
 
     #Training and testing split
     full_train_mask, test_mask, train_idx = utils.train_test_split(hdr,train_fraction)
@@ -109,12 +111,17 @@ for train_fraction in train_fraction_list:
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
+    #Open results file to write accuracy
+    f = open(os.path.join('results','SAR10_CNN_%d_accuracy.csv'%len(train_idx)),"w")
+    f.write('Epoch,Test Accuracy,Train Accuracy\n')
+
     #Main training loop
     for epoch in range(1, epochs + 1):
         train(model, device, data_train, target_train, optimizer, epoch, batch_size)
         print('\nEpoch: %d'%epoch)
         test_acc = test(model, device, data_test, target_test, 'Test ')
         train_acc = test(model, device, data_train, target_train, 'Train')
+        f.write("%d,%.2f,%.2f\n"%(epoch,test_acc,train_acc))
         scheduler.step()
 
     
