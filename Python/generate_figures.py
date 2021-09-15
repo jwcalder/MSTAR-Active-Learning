@@ -21,7 +21,11 @@ ax = plt.figure().gca()
 #Laplace learning
 df = pd.read_csv('../results/SAR10_CNN_laplace_accuracy.csv')
 num_labels = df['Number of Labels'].values
+num_cnn_labels = df['Number of CNN Labels'].values
+I = num_labels == num_cnn_labels
 laplace_accuracy = df['Accuracy'].values
+laplace_accuracy = laplace_accuracy[I]
+num_labels = num_labels[I]
 ax.plot(num_labels,laplace_accuracy,styles[0],label='CNN & Laplace')
 
 #CNN

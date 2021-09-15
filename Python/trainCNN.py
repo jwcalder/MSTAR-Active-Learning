@@ -85,22 +85,32 @@ use_cuda = cuda and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 model = models.CNN().to(device)
 
+#Training and testing split
+full_train_mask, test_mask, train_idx = utils.train_test_split(hdr,1)
+data_test = data[test_mask,:,:,:]
+target_test = labels[test_mask]
+full_data_train = data[full_train_mask,:,:,:]
+full_target_train = labels[full_train_mask]
+full_train_idx = np.arange(len(full_train_mask))[full_train_mask]
+full_num_train = np.sum(full_train_mask)
+
+#Randomly shuffle training data
+P = np.random.permutation(full_num_train)
+full_data_train = full_data_train[P,:,:,:]
+full_target_train = full_target_train[P]
+full_train_idx = full_train_idx[P]
+
+#Create an array that encodes all the training data for all train_fraction
+all_train = np.zeros(len(full_train_mask), dtype=int)
 
 #Loop over different amounts of training data
 for train_fraction in train_fraction_list:
 
-
-    #Training and testing split
-    full_train_mask, test_mask, train_idx = utils.train_test_split(hdr,train_fraction)
-    data_train = data[train_idx,:,:,:]
-    data_test = data[test_mask,:,:,:]
-    target_train = labels[train_idx]
-    target_test = labels[test_mask]
-
-    #Randomly shuffle training data
-    P = np.random.permutation(len(train_idx))
-    data_train = data_train[P,:,:,:]
-    target_train = target_train[P]
+    num_train = int(train_fraction*full_num_train)
+    train_idx = full_train_idx[:num_train]
+    target_train = full_target_train[:num_train]
+    data_train = full_data_train[:num_train]
+    all_train[train_idx] += 1
 
     #Reset parameters in the model
     for layer in model.children():
@@ -112,7 +122,7 @@ for train_fraction in train_fraction_list:
     scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
     #Open results file to write accuracy
-    f = open('../results/SAR10_CNN_%d_accuracy.csv'%len(train_idx),"w")
+    f = open('../results/SAR10_CNN_%d_accuracy.csv'%num_train,"w")
     f.write('Epoch,Test Accuracy,Train Accuracy\n')
 
     #Main training loop
@@ -126,10 +136,15 @@ for train_fraction in train_fraction_list:
 
     
     #Save model
-    torch.save(model,'../models/SAR10_CNN_%d.pt'%len(train_idx))
+    torch.save(model,'../models/SAR10_CNN_%d.pt'%num_train)
 
     #Save specific training indices used to train the CNN
     np.save('../models/SAR10_CNN_%d_training_indices'%len(train_idx), train_idx)
+
+#Save a single array that contains all the information about the training data
+all_train = len(train_fraction_list) - all_train
+#The set all_train <= i, for i=0,1,2,... gives the training points for the ith train fraction
+np.save('../models/SAR10_CNN_all_train', all_train)
 
 
 

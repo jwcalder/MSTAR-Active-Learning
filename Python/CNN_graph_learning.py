@@ -15,21 +15,24 @@ k = 20
 #Load MSTAR and CNN models
 hdr, fields, mag, phase = utils.load_MSTAR()
 cnn_models, cnn_train_idx, cnn_num_train =  utils.get_cnn_models()
+all_train = np.load('../models/SAR10_CNN_all_train.npy')
+index = np.arange(len(all_train))
 
 #Get labels and corresponding target names
+_,test_mask,_ = utils.train_test_split(hdr,1)
 labels, target_names = utils.targets_to_labels(hdr)
 
 #Open results file to write accuracy
 f_laplace = open('../results/SAR10_CNN_laplace_accuracy.csv',"w")
-f_laplace.write('Number of Labels,Accuracy\n')
-print('Number of Labels,Accuracy')
+f_laplace.write('Number of CNN Labels,Number of Labels,Accuracy\n')
+print('Number of CNN Labels,Number of Labels,Accuracy')
 
 #Loop over CNN models and apply graph learning
-for model, fname_train_idx, num_train in zip(cnn_models, cnn_train_idx, cnn_num_train):
+for i, model, fname_train_idx, num_train in zip(list(range(len(cnn_num_train))),cnn_models, cnn_train_idx, cnn_num_train):
 
     #Load training indices (for training the CNN)
-    train_idx = np.load(fname_train_idx)
-
+    cnn_train_idx = np.load(fname_train_idx)
+   
     #Check if knn data is saved, to save time
     #Dataset and metric name
     dataset = 'SAR10'
@@ -43,9 +46,16 @@ for model, fname_train_idx, num_train in zip(cnn_models, cnn_train_idx, cnn_num_
     #Build weight matrix
     W = gl.weight_matrix(I,J,D,k)
 
-    #Apply Graph Learning
-    laplace_labels = gl.graph_ssl(W,train_idx,labels[train_idx],algorithm='laplace')
-    laplace_acc = gl.accuracy(labels,laplace_labels,len(train_idx))
+    #Increase the labeled data from the CNN training set up to the full training set
+    for j in range(i,len(cnn_num_train)):
 
-    print('%d,%.2f'%(num_train,laplace_acc))
-    f_laplace.write('%d,%.2f\n'%(num_train,laplace_acc))
+        #Get training data
+        train_mask = all_train <= j
+        train_idx = index[train_mask]
+
+        #Apply Graph Learning and compute accuracy on testing data
+        laplace_labels = gl.graph_ssl(W,train_idx,labels[train_idx],algorithm='laplace')
+        laplace_acc = 100*np.mean(labels[test_mask] == laplace_labels[test_mask])
+
+        print('%d,%d,%.2f'%(num_train,len(train_idx),laplace_acc))
+        f_laplace.write('%d,%d,%.2f\n'%(num_train,len(train_idx),laplace_acc))
