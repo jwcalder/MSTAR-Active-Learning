@@ -145,6 +145,7 @@ for train_fraction in train_fraction_list:
 all_train = len(train_fraction_list) - all_train
 #The set all_train <= i, for i=0,1,2,... gives the training points for the ith train fraction
 np.save('../models/SAR10_CNN_all_train', all_train)
+f.close()
 
 
 

@@ -128,7 +128,7 @@ def encodeMSTAR(model_path, batch_size = 1000, cuda = True, use_phase = False):
     if use_phase:
         data = polar_transform(mag, phase)
     else:
-        data = mag
+        data = np.reshape(mag,(mag.shape[0],1,mag.shape[1],mag.shape[2]))
     data = torch.from_numpy(data).float()
 
     #Load model
