@@ -4,6 +4,8 @@ from scipy import sparse
 import scipy.sparse as sps
 from scipy.special import softmax
 import os
+import sys
+import pandas as pd
 from argparse import ArgumentParser
 from tqdm import tqdm
 
@@ -12,88 +14,122 @@ import utils
 import models
 from active_learning import *
 
-DEFAULT_CNN = "SAR10_CNN_2753"
+
 METHODS = ['random', 'uncertainty', 'mc', 'mcvopt', 'vopt']
+
+# Make sure results directory exists
+RESULTSDIR = os.path.join("..", "results", "al_results")
+if not os.path.exists(RESULTSDIR):
+    os.makedirs(RESULTSDIR)
+
+EIGDIR = os.path.join("..", "eigData")
+if not os.path.exists(EIGDIR):
+    os.makedirs(EIGDIR)
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run active learning test on MSTAR dataset.')
+    parser.add_argument("--cnn_fname", type=str, default="SAR10_CNNVAE", help="string of CNN model name to use for representations (including CNNVAE), located in ./models directory")
     parser.add_argument("--iters", type=int, default=10, help="number of active learning iterations")
-    parser.add_argument("--M", type=int, default=50, help="number of eigenvalues to use in truncation")
-    parser.add_argument("--data", type=str, default="SAR10_cnn.npz", help="filepath to .npz file that contains data, labels.")
+    parser.add_argument("--M", type=int, default=200, help="number of eigenvalues to use in truncation")
+    parser.add_argument("--knn", type=int, default=20, help="number of knn to use in graph construction")
     parser.add_argument("--gamma", type=float, default=0.5, help="gamma constant for Gaussian Regression covariance calculations")
-    parser.add_argument("--seed", type=int, default=2, help="random number generator seed for train_ind chocies")
+    parser.add_argument("--seed", type=int, default=2, help="random number generator seed for train_ind choices")
+    parser.add_argument("--num_per_class", type=int, default=1, help="number of initially labeled points per class")
+    parser.add_argument("--algorithm", type=str, default="laplace", help="Graphlearning graph-based ssl algorithm to use for accuracy calculations")
     args = parser.parse_args()
 
+    print("-"*30)
+    print(f"MSTAR GBSSL Active Learning Tests - Using {args.cnn_fname} Representations")
+    print("-"*30)
+    print(f"\titers = {args.iters}, num_per_class = {args.num_per_class}")
+    print(f"\tknn = {args.knn}, M (num evals) = {args.M}")
+    print(f"\talgorithm = {args.algorithm}, seed = {args.seed}")
+    print()
+    #Load MSTAR and CNN models
+    hdr, fields, mag, phase = utils.load_MSTAR()
+    all_train = np.load('../models/SAR10_CNN_all_train.npy')
+    index = np.arange(len(all_train))
 
-    # load in CNN representations, build graph
-    print("--------- Load in Data and Graph Construction --------")
-    if not os.path.exists(args.data):
-        print(f"The file {args.data} does not exist, creating representations from {DEFAULT_CNN}")
-        #Load data and stack mag,real phase, and imaginary phase together
-        hdr, fields, mag, phase = utils.load_MSTAR()
-        data = utils.polar_transform(mag, phase)
-        data = torch.from_numpy(data).float()
+    #Get labels and corresponding target names
+    _,test_mask,_ = utils.train_test_split(hdr,1)
+    labels, target_names = utils.targets_to_labels(hdr)
 
-        #Convert target names to integer labels
-        labels, target_names = utils.targets_to_labels(hdr)
 
-        # Instantiate CNN model
-        model = models.CNN()
-        model = torch.load(f"models/{DEFAULT_CNN}.pt", map_location=torch.device('cpu'))
-        # train_idx = np.load(f"models/{DEFAULT_CNN}_training_indices.npy")
-        # test_idx = np.delete(np.arange(len(labels)), train_idx)
+    model_fpath = os.path.join("..", "models", args.cnn_fname + ".pt")
+    assert os.path.exists(model_fpath)
 
-        out = model.encode(data[:5,:,:,:])
-
-        # feed data through
-        print("\tPushing data through CNN")
-        batch_size = 500
-        i = 0
-        N, d = data.shape[0], out.shape[-1]
-        X = np.empty((N, d))
-        for it in tqdm(range(data.shape[0]//batch_size + 1), total=data.shape[0]//batch_size+1):
-            ofs = min(batch_size, N-i)
-            X[i:i+ofs] = model.encode(data[i:i+ofs]).detach().numpy()
-            i += ofs
-
-        print(f"\tSaving representations to {args.data}...")
-        np.savez(f'{args.data}', data=X, labels=labels)
-    else:
-        mstar = np.load(args.data)
-        X, labels = mstar['data'], mstar['labels']
-
-    assert X.shape[0] == labels.shape[0]
-    print("\tConstructing Graph...")
-    W = gl.knn_weight_matrix(20, X)
-
-    # Calculate eigenvalues and eigenvectors
-    print("\tCalculating Eigenvalues/Eigenvectors")
-    L = sps.csgraph.laplacian(W, normed=False)
-    evals, evecs = sparse.linalg.eigsh(L, k=args.M, which='SM')
-    evals, evecs = evals.real, evecs.real
-    d, v = evals[1:], evecs[:,1:]  # we will ignore the first eigenvalue/vector
-
-    print("-------- Run Active Learning --------")
-    print(f"\tAcquisition Functions = {METHODS}")
-    print(f"\titerations = {args.iters}, # evals = {args.M}, gamma = {args.gamma}")
-    saveloc = os.path.join("results", f"{args.iters}-{args.M}-{args.gamma}")
-    if not os.path.exists(saveloc):
-        os.makedirs(saveloc)
-    print(f"\tsaving results to results/{args.iters}-{args.M}-{args.gamma}/")
+    results_fpath = args.cnn_fname + f"_{args.algorithm}_{args.knn}_{args.M}_{args.gamma}_{args.seed}_{args.num_per_class}_{args.iters}"
+    if not os.path.exists(os.path.join(RESULTSDIR, results_fpath)):
+        os.makedirs(os.path.join(RESULTSDIR, results_fpath))
+    print(f"Saving results to {RESULTSDIR}/{results_fpath}/...")
+    print("\t filename format: {cnn_fname}_{algorithm}_{knn}_{M}_{gamma}_{seed}_{num_per_class}_{iters}/")
     print()
 
+    if "VAE" in args.cnn_fname:
+        dataset, metric = args.cnn_fname.split("_")
+        train_idx_all = index
+    else:
+        dataset = args.cnn_fname.split("_")[0]
+        metric = args.cnn_fname[16:]
+        # Get training data
+        train_idx_all = np.load(os.path.join('..', 'models', args.cnn_fname + "_training_indices.npy"))
 
+    # Graph Construction
+    try:
+        I,J,D = gl.load_kNN_data(dataset,metric=metric)
+    except:
+        X = utils.encodeMSTAR(model_fpath, use_phase=True)
+        I,J,D = gl.knnsearch_annoy(X,50,similarity='angular',dataset=dataset,metric=metric)
+
+    W = gl.weight_matrix(I,J,D,args.knn)
+    N = W.shape[0]
+
+    eig_fpath = os.path.join(EIGDIR, f"{args.cnn_fname}_{args.knn}_{args.M}.npz")
+    if not os.path.exists(eig_fpath):
+        # Calculate eigenvalues and eigenvectors if not previously calculated
+        print("Calculating Eigenvalues/Eigenvectors")
+        L = sps.csgraph.laplacian(W, normed=False)
+        evals, evecs = sparse.linalg.eigsh(L, k=args.M+1, which='SM')
+        evals, evecs = evals.real, evecs.real
+        evals, evecs = evals[1:], evecs[:,1:]  # we will ignore the first eigenvalue/vector
+        print(f"\tSaved to {eig_fpath}")
+        np.savez(eig_fpath, evals=evals, evecs=evecs)
+    else:
+        print(f"Found saved eigendata at {eig_fpath}")
+        eigdata = np.load(eig_fpath)
+        evals, evecs = eigdata["evals"], eigdata["evecs"]
+
+    print()
+    print("-"*30)
+    print("\tActive Learning Tests")
+    print("-"*30)
+
+    results_df = pd.DataFrame([]) # instantiate pandas dataframe for recording results
 
     for acq in METHODS:
-        print(f"Acquisition Function = {acq}")
+        print(f"Acquisition Function = {acq.upper()}")
 
-        # Set initial labeled set
-        np.random.seed(args.seed)
-        train_ind = gl.randomize_labels(labels, 1)
-        unlabeled_ind = np.delete(np.arange(W.shape[0]), train_ind)
+        # Select initial training set -- Should be same for each method
+        train_ind = np.array([], dtype=np.int16)
+
+        for c in np.sort(np.unique(labels)):
+            c_ind = np.intersect1d(np.where(labels == c)[0], train_idx_all) # ensure the chosen points are in the correct subset of the dataset
+            rng = np.random.default_rng(args.seed) # for reproducibility
+            train_ind = np.append(train_ind, rng.choice(c_ind, args.num_per_class, replace=False))
+
+
+        # save initially labeled set
+        if not os.path.exists(os.path.join(RESULTSDIR, results_fpath, "init_labeled.npy")):
+            np.save(os.path.join(RESULTSDIR, results_fpath, "init_labeled.npy"), train_ind)
+
 
         # Run Active Learning Test
-        train_ind, accuracy = active_learning_loop(W, d, v, train_ind, labels, args.iters, acq, gamma=args.gamma)
+        train_ind, accuracy = active_learning_loop(W, evals, evecs, train_ind, labels, args.iters, acq, all_train_idx=train_idx_all, test_mask=test_mask, gamma=args.gamma, algorithm=args.algorithm)
 
-        np.savez(os.path.join(saveloc, f"{acq}.npz"), train_ind=train_ind, accuracy=accuracy)
+        results_df[acq+"_choices"] = np.concatenate(([-1], train_ind[-args.iters:]))
+        results_df[acq+"_acc"] = accuracy
+
         print("\n")
+
+    results_df.to_csv(os.path.join(RESULTSDIR, results_fpath, "results.csv"))
+    print(f"Results saved in directory {os.path.join(RESULTSDIR, results_fpath)}/")

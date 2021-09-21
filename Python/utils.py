@@ -25,7 +25,7 @@ def get_cnn_models(model_dir = 'models'):
     '''
 
 
-    #Retrieve CNN model names and number of training points 
+    #Retrieve CNN model names and number of training points
     cnn_models = glob.glob('../models/SAR10_CNN_*.pt')
     cnn_num_train = [int(f[20:-3]) for f in cnn_models]
 
@@ -132,9 +132,9 @@ def encodeMSTAR(model_path, batch_size = 1000, cuda = True, use_phase = False):
     data = torch.from_numpy(data).float()
 
     #Load model
-    model = torch.load(model_path)
+    model = torch.load(model_path, map_location=device)
     model.eval()
-    encoded_data = None 
+    encoded_data = None
     with torch.no_grad():
         for idx in range(0,len(data),batch_size):
             data_batch = data[idx:idx+batch_size]
@@ -187,4 +187,3 @@ def polar_transform(mag, phase):
     data = np.stack((mag,real_phase,imaginary_phase),axis=1)
 
     return data
-
