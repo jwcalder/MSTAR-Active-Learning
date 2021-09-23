@@ -12,6 +12,7 @@ from tqdm import tqdm
 import torch
 import utils
 import models
+import matplotlib.pyplot as plt
 from active_learning import *
 
 
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=2, help="random number generator seed for train_ind choices")
     parser.add_argument("--num_per_class", type=int, default=1, help="number of initially labeled points per class")
     parser.add_argument("--algorithm", type=str, default="laplace", help="Graphlearning graph-based ssl algorithm to use for accuracy calculations")
+    parser.add_argument("--plot", type=bool, default=False, help="Set to True to save plot of results")
     args = parser.parse_args()
 
     print("-"*30)
@@ -44,6 +46,7 @@ if __name__ == "__main__":
     print(f"\titers = {args.iters}, num_per_class = {args.num_per_class}")
     print(f"\tknn = {args.knn}, M (num evals) = {args.M}")
     print(f"\talgorithm = {args.algorithm}, seed = {args.seed}")
+    print(f"\tplot = {args.plot}")
     print()
     #Load MSTAR and CNN models
     hdr, fields, mag, phase = utils.load_MSTAR()
@@ -133,3 +136,26 @@ if __name__ == "__main__":
 
     results_df.to_csv(os.path.join(RESULTSDIR, results_fpath, "results.csv"))
     print(f"Results saved in directory {os.path.join(RESULTSDIR, results_fpath)}/")
+
+
+    if (args.plot): #Plots the accuracies of different active learning methods and saves to results folder
+
+        plt.figure()
+
+        x = np.arange(args.num_per_class, args.num_per_class + args.iters + 1)
+
+        for method in METHODS:
+            plt.plot(x, results_df[method + "_acc"], label = method + " accuracy")
+
+        plt.xlabel("Number of Labeled Points")
+        plt.ylabel("Accuracy")
+        plt.title("Active Learning on " + args.cnn_fname)
+        plt.legend()
+
+
+
+        text =  "iters = " + str(args.iters) + ", num_per_class = " + str(args.num_per_class) + ", knn = " + str(args.knn) + ", gamma = " + str(args.gamma) + ", M (num evals) = " + str(args.M) + ", algorithm = " + str(args.algorithm) + ", seed = " + str(args.seed)
+        plt.figtext(.5, .96, text, wrap= True, horizontalalignment = 'center', fontsize=6) #puts description at top of plot of which parameters were used to help with reproducibility
+
+
+        plt.savefig(os.path.join(RESULTSDIR, results_fpath, "results.png"))
