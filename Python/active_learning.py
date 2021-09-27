@@ -5,14 +5,24 @@ import scipy.sparse as sps
 from scipy.special import softmax
 from argparse import ArgumentParser
 
-def acquisition_function(C_a, V, candidate_inds, u, method='vopt', plot=False, gamma=0.1):
+def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_method = 'norm', plot=False, gamma=0.1):
     assert method in ['uncertainty','vopt','mc','mcvopt']
 
     #calculate uncertainty terms
     num_classes = u.shape[1]
     u_probs = softmax(u[candidate_inds], axis=1)
     one_hot_predicted_labels = np.eye(num_classes)[np.argmax(u[candidate_inds], axis=1)]
-    unc_terms = np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1) #NOTE: could change this 'norm'
+
+    uncertainty_methods = { #Dictionary to map uncertainty method to the uncertainty terms used in that method
+    "norm": np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1),
+    "entropy": np.max(u[candidate_inds], axis=1) - np.sum(u[candidate_inds]*np.log(u[candidate_inds]+.00001), axis=1),
+    "least_confidence": np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1),
+    "smallest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, num_classes-2]),
+    "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0]),
+    "random": np.random.random(u[candidate_inds].shape[0]),
+    }
+
+    unc_terms = uncertainty_methods.get(uncertainty_method)
 
     if method == 'uncertainty':
         return unc_terms
@@ -38,7 +48,7 @@ def update_C_a(C_a, V, Q, gamma=0.1):
         C_a -= np.outer(Cavk, Cavk)/(gamma**2. + ip)
     return C_a
 
-def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, all_train_idx=None, test_mask=None, gamma=0.1, algorithm='laplace', verbose=True):
+def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, all_train_idx=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', verbose=True):
     assert method in ['random','uncertainty','vopt','mc','mcvopt']
     accuracy = np.array([])
     C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
@@ -53,7 +63,7 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, a
             if method == 'random':
                 train_ind = np.append(train_ind, np.random.choice(candidate_inds))
             else:
-                obj_vals = acquisition_function(C_a, evecs, candidate_inds, u, method, gamma=gamma)
+                obj_vals = acquisition_function(C_a, evecs, candidate_inds, u, method, uncertainty_method = uncertainty_method, gamma=gamma)
                 new_train_ind = candidate_inds[np.argmax(obj_vals)]
                 C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
                 train_ind = np.append(train_ind, new_train_ind)
