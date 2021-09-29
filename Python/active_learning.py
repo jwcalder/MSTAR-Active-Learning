@@ -48,7 +48,7 @@ def update_C_a(C_a, V, Q, gamma=0.1):
         C_a -= np.outer(Cavk, Cavk)/(gamma**2. + ip)
     return C_a
 
-def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, all_train_idx=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', verbose=True):
+def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, all_train_idx=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', vals_norm = None, vecs_norm = None, verbose=True):
     assert method in ['random','uncertainty','vopt','mc','mcvopt']
     accuracy = np.array([])
     C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
@@ -68,7 +68,7 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, a
                 C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
                 train_ind = np.append(train_ind, new_train_ind)
 
-        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, return_vector=True)
+        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, vals = evals, vecs = evecs, vals_norm = vals_norm, vecs_norm = vecs_norm, return_vector=True)
         comp_labels = np.argmax(u, axis=1)
         if test_mask is None:
             comp_acc = gl.accuracy(labels, comp_labels, len(train_ind))

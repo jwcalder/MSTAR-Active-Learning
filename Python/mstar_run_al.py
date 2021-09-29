@@ -95,12 +95,27 @@ if __name__ == "__main__":
         evals, evecs = sparse.linalg.eigsh(L, k=args.M+1, which='SM')
         evals, evecs = evals.real, evecs.real
         evals, evecs = evals[1:], evecs[:,1:]  # we will ignore the first eigenvalue/vector
+
+        n = W.shape[0]
+        deg = gl.degrees(W)
+        m = np.sum(deg)/2
+        gamma = 0
+
+        Lnorm = gl.graph_laplacian(W,norm="normalized")
+        def Mnorm(v):
+            v = v.flatten()
+            return (Lnorm*v).flatten() + (gamma/m)*(deg.T@v)*deg
+        Anorm = sparse.linalg.LinearOperator((n,n), matvec=Mnorm)
+        vals_norm, vecs_norm = sparse.linalg.eigs(Anorm,k=300,which='SM')
+        vals_norm = vals_norm.real; vecs_norm = vecs_norm.real
+
         print(f"\tSaved to {eig_fpath}")
-        np.savez(eig_fpath, evals=evals, evecs=evecs)
+        np.savez(eig_fpath, evals=evals, evecs=evecs, vals_norm = vals_norm, vecs_norm = vecs_norm)
     else:
         print(f"Found saved eigendata at {eig_fpath}")
         eigdata = np.load(eig_fpath)
-        evals, evecs = eigdata["evals"], eigdata["evecs"]
+        evals, evecs,vals_norm, vecs_norm = eigdata["evals"], eigdata["evecs"], eigdata["vals_norm"], eigdata["vecs_norm"]
+
 
     print()
     print("-"*30)
@@ -127,7 +142,7 @@ if __name__ == "__main__":
 
 
         # Run Active Learning Test
-        train_ind, accuracy = active_learning_loop(W, evals, evecs, train_ind, labels, args.iters, acq, all_train_idx=train_idx_all, test_mask=test_mask, gamma=args.gamma, algorithm=args.algorithm)
+        train_ind, accuracy = active_learning_loop(W, evals, evecs, train_ind, labels, args.iters, acq, all_train_idx=train_idx_all, test_mask=test_mask, gamma=args.gamma, algorithm=args.algorithm, vals_norm = vals_norm, vecs_norm = vecs_norm)
 
         results_df[acq+"_choices"] = np.concatenate(([-1], train_ind[-args.iters:]))
         results_df[acq+"_acc"] = accuracy
@@ -144,18 +159,29 @@ if __name__ == "__main__":
 
         x = np.arange(args.num_per_class, args.num_per_class + args.iters + 1)
 
-        for method in METHODS:
-            plt.plot(x, results_df[method + "_acc"], label = method + " accuracy")
+        #General plot settings
+        legend_fontsize = 12
+        label_fontsize = 16
+        fontsize = 16
+        # matplotlib.rcParams.update({'font.size': fontsize})
+        styles = ['^b-','or-','dg-','pm-','xc-','sk-', '*y-']
+
+        skip = 12
+
+        for i, method in enumerate(METHODS):
+            plt.plot(x[::skip], 100*results_df[method + "_acc"][::skip], styles[i], label = method + " accuracy")
 
         plt.xlabel("Number of Labeled Points")
-        plt.ylabel("Accuracy")
+        plt.ylabel("Accuracy %")
         plt.title("Active Learning on " + args.cnn_fname)
         plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
 
 
 
         text =  "iters = " + str(args.iters) + ", num_per_class = " + str(args.num_per_class) + ", knn = " + str(args.knn) + ", gamma = " + str(args.gamma) + ", M (num evals) = " + str(args.M) + ", algorithm = " + str(args.algorithm) + ", seed = " + str(args.seed)
-        plt.figtext(.5, .96, text, wrap= True, horizontalalignment = 'center', fontsize=6) #puts description at top of plot of which parameters were used to help with reproducibility
+        #plt.figtext(.5, .99, text, wrap= True, horizontalalignment = 'center', fontsize=6) #puts description at top of plot of which parameters were used to help with reproducibility
 
 
         plt.savefig(os.path.join(RESULTSDIR, results_fpath, "results.png"))
