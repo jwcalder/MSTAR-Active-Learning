@@ -38,6 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_per_class", type=int, default=1, help="number of initially labeled points per class")
     parser.add_argument("--algorithm", type=str, default="laplace", help="Graphlearning graph-based ssl algorithm to use for accuracy calculations")
     parser.add_argument("--plot", type=bool, default=False, help="Set to True to save plot of results")
+    parser.add_argument("--tsne", type=bool, default=False, help="Set to True to visualize t-sne embedding of selected points")
     args = parser.parse_args()
 
     print("-"*30)
@@ -152,6 +153,42 @@ if __name__ == "__main__":
     results_df.to_csv(os.path.join(RESULTSDIR, results_fpath, "results.csv"))
     print(f"Results saved in directory {os.path.join(RESULTSDIR, results_fpath)}/")
 
+    if(args.tsne): #Creates t-SNE visualizations of dataset, train/test split, and queried active learning points
+        from sklearn.manifold import TSNE
+        tsne_train_test_path = os.path.join(RESULTSDIR, results_fpath, "tsne_embedded_data")
+        if not os.path.exists(tsne_train_test_path):
+            X = utils.encodeMSTAR(model_fpath, use_phase=True)
+            tsne_embedded_data = TSNE(n_components=2).fit_transform(X)
+            np.save(tsne_train_test_path, tsne_embedded_data)
+            print(f"Results saved in directory {os.path.join(tsne_train_test_path)}/")
+        else:
+            print(f"Found saved train/test t-sne at {tsne_train_test_path}")
+            tsne_embedded_data = np.load(tsne_train_test_path)
+
+        plt.figure() #Plot the t-SNE embedding of MSTAR
+        plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c = labels, s=.5)
+        plt.title("t-SNE Embedding of MSTAR Data")
+        plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_embedding.png"))
+
+
+        plt.figure() #Visualize the train/test split with the t-SNE Embedding
+        plt.scatter(tsne_embedded_data[train_idx_all,0], tsne_embedded_data[train_idx_all,1], c = 'blue', label = "Train points", s=.5)
+        plt.scatter(tsne_embedded_data[test_mask,0], tsne_embedded_data[test_mask,1], c = 'red', label = "Test points", s=.5)
+        plt.title("t-SNE Embedding of Train Test Split")
+        plt.legend()
+        plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_train_test.png"))
+
+
+
+        for method in METHODS: #Visualize the points queried by each active learning method
+            plt.figure()
+            indexes_queried = results_df[method + "_choices"]
+            plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c = labels, s=.5)
+            plt.scatter(tsne_embedded_data[indexes_queried, 0], tsne_embedded_data[indexes_queried, 1], c = 'red', marker = '*', label = "Active learning points")
+            plt.title("Points Queried during " + method)
+            plt.legend()
+            plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_" + method + "_points.png"))
+
 
     if (args.plot): #Plots the accuracies of different active learning methods and saves to results folder
 
@@ -177,8 +214,6 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-
-
 
         text =  "iters = " + str(args.iters) + ", num_per_class = " + str(args.num_per_class) + ", knn = " + str(args.knn) + ", gamma = " + str(args.gamma) + ", M (num evals) = " + str(args.M) + ", algorithm = " + str(args.algorithm) + ", seed = " + str(args.seed)
         #plt.figtext(.5, .99, text, wrap= True, horizontalalignment = 'center', fontsize=6) #puts description at top of plot of which parameters were used to help with reproducibility
