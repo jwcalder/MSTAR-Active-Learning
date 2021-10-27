@@ -3,3 +3,6 @@
 *.DS_Store
 Python/mstar_test*.py
 results/al_results/*
+eigData/
+*.pyc
+
