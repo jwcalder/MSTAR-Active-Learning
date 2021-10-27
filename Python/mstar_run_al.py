@@ -24,11 +24,12 @@ from active_learning import *
 
 METHODS = ['random', 'uncertainty', 'mc', 'mcvopt', 'vopt']
 
-# Make sure results directory exists
+# Make sure results directory exists to put the active learning results
 RESULTSDIR = os.path.join("..", "results", "al_results")
 if not os.path.exists(RESULTSDIR):
     os.makedirs(RESULTSDIR)
 
+# Make sure a directory to store eigenvalue and eigenvector data so don't have to recompute with every test
 EIGDIR = os.path.join("..", "eigData")
 if not os.path.exists(EIGDIR):
     os.makedirs(EIGDIR)
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=2, help="random number generator seed for train_ind choices")
     parser.add_argument("--num_per_class", type=int, default=1, help="number of initially labeled points per class")
     parser.add_argument("--algorithm", type=str, default="laplace", help="Graphlearning graph-based ssl algorithm to use for accuracy calculations")
-    parser.add_argument("--plot", type=bool, default=False, help="Set to True to save plot of results")
+    parser.add_argument("--plot", type=bool, default=False, help="Set to True to save plot of accuracy results")
     parser.add_argument("--tsne", type=bool, default=False, help="Set to True to visualize t-sne embedding of selected points")
     args = parser.parse_args()
 

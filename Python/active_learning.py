@@ -37,8 +37,7 @@ def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_m
         "entropy": np.max(u[candidate_inds], axis=1) - np.sum(u[candidate_inds]*np.log(u[candidate_inds]+.00001), axis=1),
         "least_confidence": np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1),
         "smallest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, num_classes-2]),
-        "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0]),
-        "random": np.random.random(u[candidate_inds].shape[0]),
+        "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0])
     }
 
     unc_terms = uncertainty_methods.get(uncertainty_method)
