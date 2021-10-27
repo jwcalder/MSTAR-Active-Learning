@@ -30,7 +30,8 @@ plt.show()
 # Run Active Learning
 To run active learning tests on the MSTAR data, you can simply run the following code in the command line (terminal):
 ```
-python Python/mstar_run_al.py 
+cd Python
+python mstar_run_al.py --iters 200
 ```
 * A variety of flags are available for customizing this process; view them all via the ``--help`` flag in the above script call 
 
@@ -41,13 +42,15 @@ For the sake of completeness, we briefly describe our overall data pipeline that
 3. Define labeled set of points, ``train_ind`` 
 4. Run graph-based SSL via the methods of [GraphLearning package](https://github.com/jwcalder/GraphLearning.git)
 
-Active learning then improves the performance of the chosen graph-based SSL method by selecting informative points in iterative feedback loop, called the "Active Learning Process". This process alternates between (1) computing graph-based SSL classifier given __current__ labeled data and (2) selecting new points to "hand-label" via the use of an ``acquistion function``. 
+Active learning then improves the performance of the chosen graph-based SSL method by selecting informative points in iterative feedback loop, called the "Active Learning Process". This process alternates between (1) computing graph-based SSL classifier given __current__ labeled data and (2) selecting new points to "hand-label" via the use of an **acquistion function**. 
 
 For the acquisition functions used herein, we use a proxy graph-based model that uses the geometric information contained in the first ``M`` eigenvalues and eigenvectors of the positive semi-definite graph Laplacian matrix used in graph-based methods. The properties of this proxy model are more efficient to compute to allow us to make faster decisions of points to label in the active learning process. The acquisition functions implemented herein are:
 * ``uncertainty``: Uncertainty sampling, with a variety of uncertainty measures implemented (``largest_margin``, ``norm``, ``least_confidence``, ``entropy``, ``smallest_margin``)
 * ``vopt``: VOpt, variance minimization adaptation of [Ji and Han (2012)](https://proceedings.mlr.press/v22/ji12.html)
 * ``mc``: Model Change of [Miller and Bertozzi (2021)](https://arxiv.org/abs/2110.07739)
 * ``mcvopt``: Novel combination of Model Change and VOpt acquisition functions
+
+__Note: Can change which acquisition functions are run in the test by changing the variable ``METHODS`` hard-coded into the ``mstar_run_al.py`` script located on line 25.__
 
 
 # CNN and VAE Representation Tests
