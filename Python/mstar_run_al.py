@@ -37,7 +37,7 @@ if not os.path.exists(EIGDIR):
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run active learning test on MSTAR dataset.')
     parser.add_argument("--vae_fname", type=str, default="SAR10_CNNVAE", help="string of CNNVAE model name to use for representations, located in ./models directory. Ensure this is a VAE model by having string 'VAE' in the model name.")
-    parser.add_argument("--iters", type=int, default=10, help="number of active learning iterations")
+    parser.add_argument("--iters", type=int, default=500, help="number of active learning iterations")
     parser.add_argument("--M", type=int, default=200, help="number of eigenvalues to use in truncation")
     parser.add_argument("--knn", type=int, default=20, help="number of knn to use in graph construction")
     parser.add_argument("--gamma", type=float, default=0.5, help="gamma constant for Gaussian Regression covariance calculations")
@@ -163,40 +163,41 @@ if __name__ == "__main__":
     # Creates t-SNE visualizations of dataset, train/test split, and queried active learning points
     if args.tsne:
         from sklearn.manifold import TSNE
-        tsne_train_test_path = os.path.join(RESULTSDIR, results_fpath, "tsne_embedded_data")
-        if not os.path.exists(tsne_train_test_path):
+        tsne_data_path = os.path.join("..", "results", f"tsne_{args.vae_fname}.npy")
+        if not os.path.exists(tsne_data_path):
             X = utils.encodeMSTAR(model_fpath, use_phase=True)
             tsne_embedded_data = TSNE(n_components=2, init='pca', learning_rate='auto').fit_transform(X)
-            np.save(tsne_train_test_path, tsne_embedded_data)
-            print(f"Results saved in directory {os.path.join(tsne_train_test_path)}/")
+            np.save(tsne_data_path, tsne_embedded_data)
+            print(f"tSNE embedding data saved to {tsne_data_path}")
         else:
-            print(f"Found saved train/test t-SNE embedding at {tsne_train_test_path}")
-            tsne_embedded_data = np.load(tsne_train_test_path)
+            print(f"Found saved t-SNE embedding at {tsne_data_path}")
+            tsne_embedded_data = np.load(tsne_data_path)
 
-        # Plot the t-SNE embedding of MSTAR
-        plt.figure()
-        plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c = labels, s=.5)
-        plt.title("t-SNE Embedding of MSTAR Data")
-        plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_embedding.png"))
+        # Plot the t-SNE embedding of MSTAR, if not already exist
+        if not os.path.exists(os.path.join("..", "results", f"tsne_{args.vae_fname}.png")):
+            plt.figure()
+            plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c=labels, s=.5)
+            plt.title("t-SNE Embedding of MSTAR Data")
+            plt.savefig(os.path.join("..", "results", f"tsne_{args.vae_fname}.png"))
 
-        # Visualize the train/test split with the t-SNE Embedding
-        plt.figure()
-        plt.scatter(tsne_embedded_data[train_idx_all,0], tsne_embedded_data[train_idx_all,1], c = 'blue', label = "Train points", s=.5)
-        plt.scatter(tsne_embedded_data[test_mask,0], tsne_embedded_data[test_mask,1], c = 'red', label = "Test points", s=.5)
-        plt.title("t-SNE Embedding of Train Test Split")
-        plt.legend()
-        plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_train_test.png"))
+            # Visualize the train/test split with the t-SNE Embedding
+            plt.figure()
+            plt.scatter(tsne_embedded_data[train_idx_all,0], tsne_embedded_data[train_idx_all,1], c = 'blue', label = "Train points", s=.5)
+            plt.scatter(tsne_embedded_data[test_mask,0], tsne_embedded_data[test_mask,1], c = 'red', label = "Test points", s=.5)
+            plt.title("t-SNE Embedding of Train Test Split")
+            plt.legend()
+            plt.savefig(os.path.join("..", "results", f"tsne_{args.vae_fname}_train_test.png"))
 
 
-
-        for method in METHODS: #Visualize the points queried by each active learning method
+        # Visualize the points queried by each active learning method for this test
+        for method in METHODS:
             plt.figure()
             indexes_queried = results_df[method + "_choices"]
             plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c = labels, s=.5)
             plt.scatter(tsne_embedded_data[indexes_queried, 0], tsne_embedded_data[indexes_queried, 1], c = 'red', marker = '*', label = "Active learning points")
-            plt.title("Points Queried during " + method)
+            plt.title(f"Query Points from {method}")
             plt.legend()
-            plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_" + method + "_points.png"))
+            plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_" + method + "_query_points.png"))
 
 
     # Plots the accuracies of the tested active learning methods and saves to results folder
