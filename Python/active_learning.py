@@ -105,6 +105,9 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
 
     assert method in ['random','uncertainty','vopt','mc','mcvopt']
 
+    if train_idx_all is None:
+        print("WARNING: You have set train_idx_all to None, which assumes ALL points are available for active learning queries... This is NOT correct for MSTAR train/test split!")
+
     # instantiate accuracy array and initial covariance matrix
     accuracy = np.array([])
     C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
