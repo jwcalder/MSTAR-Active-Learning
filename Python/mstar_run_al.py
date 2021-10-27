@@ -35,7 +35,7 @@ if not os.path.exists(EIGDIR):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run active learning test on MSTAR dataset.')
-    parser.add_argument("--cnn_fname", type=str, default="SAR10_CNNVAE", help="string of CNN model name to use for representations (including CNNVAE), located in ./models directory")
+    parser.add_argument("--vae_fname", type=str, default="SAR10_CNNVAE", help="string of CNNVAE model name to use for representations, located in ./models directory. Ensure this is a VAE model by having string 'VAE' in the model name.")
     parser.add_argument("--iters", type=int, default=10, help="number of active learning iterations")
     parser.add_argument("--M", type=int, default=200, help="number of eigenvalues to use in truncation")
     parser.add_argument("--knn", type=int, default=20, help="number of knn to use in graph construction")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("-"*30)
-    print(f"MSTAR GBSSL Active Learning Tests - Using {args.cnn_fname} Representations")
+    print(f"MSTAR GBSSL Active Learning Tests - Using {args.vae_fname} Representations")
     print("-"*30)
     print(f"\titers = {args.iters}, num_per_class = {args.num_per_class}")
     print(f"\tknn = {args.knn}, M (num evals) = {args.M}")
@@ -56,41 +56,35 @@ if __name__ == "__main__":
     print(f"\tplot = {args.plot}")
     print()
 
+    assert "vae" in args.vae_fname.lower() # ensure that we are using VAE computed representations, NOT one of the supervised CNN model's representations
+
     # Load MSTAR and CNN models
     hdr, fields, mag, phase = utils.load_MSTAR()
-    all_train = np.load('../models/SAR10_CNN_all_train.npy')
-    index = np.arange(len(all_train))
 
     # Get labels and corresponding target names
     train_mask, test_mask, _ = utils.train_test_split(hdr,1)
     labels, target_names = utils.targets_to_labels(hdr)
 
     # Find specified CNNVAE model's filepath
-    model_fpath = os.path.join("..", "models", args.cnn_fname + ".pt")
+    model_fpath = os.path.join("..", "models", args.vae_fname + ".pt")
     assert os.path.exists(model_fpath)
 
     # Define and make results filepath
-    results_fpath = args.cnn_fname + f"_{args.algorithm}_{args.knn}_{args.M}_{args.gamma}_{args.seed}_{args.num_per_class}_{args.iters}"
+    results_fpath = args.vae_fname + f"_{args.algorithm}_{args.knn}_{args.M}_{args.gamma}_{args.seed}_{args.num_per_class}_{args.iters}"
     if not os.path.exists(os.path.join(RESULTSDIR, results_fpath)):
         os.makedirs(os.path.join(RESULTSDIR, results_fpath))
     print(f"Saving results to {RESULTSDIR}/{results_fpath}/...")
-    print("\t filename format: {cnn_fname}_{algorithm}_{knn}_{M}_{gamma}_{seed}_{num_per_class}_{iters}/")
+    print("\t filename format: {vae_fname}_{algorithm}_{knn}_{M}_{gamma}_{seed}_{num_per_class}_{iters}/")
     print()
 
 
-    # Depending on which representation you specify to use for graph construction, we may restrict the possible training indices based on CNN training set
-    if "VAE" in args.cnn_fname: 
-        dataset, metric = args.cnn_fname.split("_")
-        train_idx_all = np.where(train_mask)[0]
-    else:
-        dataset = args.cnn_fname.split("_")[0]
-        metric = args.cnn_fname[16:]
-        # Get possilbe training data, per the training subset used in CNN training
-        train_idx_all = np.load(os.path.join('..', 'models', args.cnn_fname + "_training_indices.npy"))
+    # Define dataset name and vae "metric" identifier as well as training set indicies
+    dataset, metric = args.vae_fname.split("_")
+    train_idx_all = np.where(train_mask)[0]
 
     # Graph Construction -- check if previously computed
     try:
-        I,J,D = gl.load_kNN_data(dataset,metric=metric)
+        I,J,D = gl.load_kNN_data(dataset, metric=metric)
     except:
         X = utils.encodeMSTAR(model_fpath, use_phase=True)
         I,J,D = gl.knnsearch_annoy(X,50,similarity='angular',dataset=dataset,metric=metric)
@@ -99,7 +93,7 @@ if __name__ == "__main__":
     N = W.shape[0]
 
     # Calculate (or load in previously computed) eigenvalues and eigenvectors of
-    eig_fpath = os.path.join(EIGDIR, f"{args.cnn_fname}_{args.knn}_{args.M}.npz")
+    eig_fpath = os.path.join(EIGDIR, f"{args.vae_fname}_{args.knn}_{args.M}.npz")
     if not os.path.exists(eig_fpath):
         # Calculate eigenvalues and eigenvectors of unnormalized graph Laplacian if not previously calculated
         print("Calculating Eigenvalues/Eigenvectors...")
@@ -225,7 +219,7 @@ if __name__ == "__main__":
 
         plt.xlabel("Number of Labeled Points")
         plt.ylabel("Accuracy %")
-        plt.title("Active Learning on " + args.cnn_fname)
+        plt.title("Active Learning on " + args.vae_fname)
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
