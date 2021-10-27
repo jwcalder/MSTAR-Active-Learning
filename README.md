@@ -45,13 +45,18 @@ Active learning then improves the performance of the chosen graph-based SSL meth
 
 For the acquisition functions used herein, we use a proxy graph-based model that uses the geometric information contained in the first ``M`` eigenvalues and eigenvectors of the positive semi-definite graph Laplacian matrix used in graph-based methods. The properties of this proxy model are more efficient to compute to allow us to make faster decisions of points to label in the active learning process. The acquisition functions implemented herein are:
 * ``uncertainty``: Uncertainty sampling, with a variety of uncertainty measures implemented (``largest_margin``, ``norm``, ``least_confidence``, ``entropy``, ``smallest_margin``)
-* ``vopt``: VOpt
-* ``mc``: Model Change
+* ``vopt``: VOpt, variance minimization adaptation of [Ji and Han (2012)](https://proceedings.mlr.press/v22/ji12.html)
+* ``mc``: Model Change of [Miller and Bertozzi (2021)](https://arxiv.org/abs/2110.07739)
 * ``mcvopt``: Novel combination of Model Change and VOpt acquisition functions
 
 
 # CNN and VAE Representation Tests
-We ran some initial tests to gauge whether or not graph-based learning using unsupervised VAE embeddings would be competitive. Can recreate the following plot by running the following:
+We ran some initial tests to gauge whether or not graph-based learning using unsupervised VAE embeddings would be competitive, and [this plot](figures/CNN_Laplace.pdf) summarizes our result. All results are currently saved in the ``models`` and ``figures`` directories. However, one can recreate the training and testing process that created the plot by running the following scripts:
 ```
-# the code for doing this test
+cd Python
+python trainVAE.py          # train the VAE on all the unlabeled data and save the learned model
+python trainCNN.py          # train CNNs with 5%, 10%, 15%, etc of the training data and save the learned models
+python CNN_ML.py            # apply a variety of ML methods on each of the learned CNN representations 
+python CNN_graphlearning.py # apply graph learning on the CNN and VAE representations
+python generate_figures.py  # generate plot of accuracies of various ML models on the different CNN and VAE representations
 ```
