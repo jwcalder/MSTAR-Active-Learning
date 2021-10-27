@@ -1,3 +1,9 @@
+'''
+Main Python script for running overall active learning process tests on MSTAR data.
+    * Run this script through command line (terminal).
+    * View parameter descriptions with "python mstar_run_al.py --help"
+'''
+
 import numpy as np
 import graphlearning as gl
 from scipy import sparse
@@ -49,19 +55,21 @@ if __name__ == "__main__":
     print(f"\talgorithm = {args.algorithm}, seed = {args.seed}")
     print(f"\tplot = {args.plot}")
     print()
-    #Load MSTAR and CNN models
+
+    # Load MSTAR and CNN models
     hdr, fields, mag, phase = utils.load_MSTAR()
     all_train = np.load('../models/SAR10_CNN_all_train.npy')
     index = np.arange(len(all_train))
 
-    #Get labels and corresponding target names
-    _,test_mask,_ = utils.train_test_split(hdr,1)
+    # Get labels and corresponding target names
+    train_mask, test_mask, _ = utils.train_test_split(hdr,1)
     labels, target_names = utils.targets_to_labels(hdr)
 
-
+    # Find specified CNNVAE model's filepath
     model_fpath = os.path.join("..", "models", args.cnn_fname + ".pt")
     assert os.path.exists(model_fpath)
 
+    # Define and make results filepath
     results_fpath = args.cnn_fname + f"_{args.algorithm}_{args.knn}_{args.M}_{args.gamma}_{args.seed}_{args.num_per_class}_{args.iters}"
     if not os.path.exists(os.path.join(RESULTSDIR, results_fpath)):
         os.makedirs(os.path.join(RESULTSDIR, results_fpath))
@@ -69,16 +77,18 @@ if __name__ == "__main__":
     print("\t filename format: {cnn_fname}_{algorithm}_{knn}_{M}_{gamma}_{seed}_{num_per_class}_{iters}/")
     print()
 
-    if "VAE" in args.cnn_fname:
+
+    # Depending on which representation you specify to use for graph construction, we may restrict the possible training indices based on CNN training set
+    if "VAE" in args.cnn_fname: 
         dataset, metric = args.cnn_fname.split("_")
-        train_idx_all = index
+        train_idx_all = np.where(train_mask)[0]
     else:
         dataset = args.cnn_fname.split("_")[0]
         metric = args.cnn_fname[16:]
-        # Get training data
+        # Get possilbe training data, per the training subset used in CNN training
         train_idx_all = np.load(os.path.join('..', 'models', args.cnn_fname + "_training_indices.npy"))
 
-    # Graph Construction
+    # Graph Construction -- check if previously computed
     try:
         I,J,D = gl.load_kNN_data(dataset,metric=metric)
     except:
@@ -88,20 +98,23 @@ if __name__ == "__main__":
     W = gl.weight_matrix(I,J,D,args.knn)
     N = W.shape[0]
 
+    # Calculate (or load in previously computed) eigenvalues and eigenvectors of
     eig_fpath = os.path.join(EIGDIR, f"{args.cnn_fname}_{args.knn}_{args.M}.npz")
     if not os.path.exists(eig_fpath):
-        # Calculate eigenvalues and eigenvectors if not previously calculated
-        print("Calculating Eigenvalues/Eigenvectors")
+        # Calculate eigenvalues and eigenvectors of unnormalized graph Laplacian if not previously calculated
+        print("Calculating Eigenvalues/Eigenvectors...")
         L = sps.csgraph.laplacian(W, normed=False)
         evals, evecs = sparse.linalg.eigsh(L, k=args.M+1, which='SM')
         evals, evecs = evals.real, evecs.real
         evals, evecs = evals[1:], evecs[:,1:]  # we will ignore the first eigenvalue/vector
 
+
+
+        # Also compute normalized graph laplacian eigenvectors for use in some GraphLearning graph_ssl functions (e.g. "mbo")
         n = W.shape[0]
         deg = gl.degrees(W)
         m = np.sum(deg)/2
         gamma = 0
-
         Lnorm = gl.graph_laplacian(W,norm="normalized")
         def Mnorm(v):
             v = v.flatten()
@@ -111,11 +124,11 @@ if __name__ == "__main__":
         vals_norm = vals_norm.real; vecs_norm = vecs_norm.real
 
         print(f"\tSaved to {eig_fpath}")
-        np.savez(eig_fpath, evals=evals, evecs=evecs, vals_norm = vals_norm, vecs_norm = vecs_norm)
+        np.savez(eig_fpath, evals=evals, evecs=evecs, vals_norm=vals_norm, vecs_norm=vecs_norm)
     else:
         print(f"Found saved eigendata at {eig_fpath}")
         eigdata = np.load(eig_fpath)
-        evals, evecs,vals_norm, vecs_norm = eigdata["evals"], eigdata["evecs"], eigdata["vals_norm"], eigdata["vecs_norm"]
+        evals, evecs, vals_norm, vecs_norm = eigdata["evals"], eigdata["evecs"], eigdata["vals_norm"], eigdata["vecs_norm"]
 
 
     print()
@@ -130,20 +143,19 @@ if __name__ == "__main__":
 
         # Select initial training set -- Should be same for each method
         train_ind = np.array([], dtype=np.int16)
-
         for c in np.sort(np.unique(labels)):
             c_ind = np.intersect1d(np.where(labels == c)[0], train_idx_all) # ensure the chosen points are in the correct subset of the dataset
             rng = np.random.default_rng(args.seed) # for reproducibility
             train_ind = np.append(train_ind, rng.choice(c_ind, args.num_per_class, replace=False))
 
 
-        # save initially labeled set
+        # Save initially labeled set
         if not os.path.exists(os.path.join(RESULTSDIR, results_fpath, "init_labeled.npy")):
             np.save(os.path.join(RESULTSDIR, results_fpath, "init_labeled.npy"), train_ind)
 
 
-        # Run Active Learning Test
-        train_ind, accuracy = active_learning_loop(W, evals, evecs, train_ind, labels, args.iters, acq, all_train_idx=train_idx_all, test_mask=test_mask, gamma=args.gamma, algorithm=args.algorithm, vals_norm = vals_norm, vecs_norm = vecs_norm)
+        # Run Active Learning Test for this current acqusition function
+        train_ind, accuracy = active_learning_loop(W, evals, evecs, train_ind, labels, args.iters, acq, train_idx_all=train_idx_all, test_mask=test_mask, gamma=args.gamma, algorithm=args.algorithm, vals_norm = vals_norm, vecs_norm = vecs_norm)
 
         results_df[acq+"_choices"] = np.concatenate(([-1], train_ind[-args.iters:]))
         results_df[acq+"_acc"] = accuracy
@@ -153,25 +165,27 @@ if __name__ == "__main__":
     results_df.to_csv(os.path.join(RESULTSDIR, results_fpath, "results.csv"))
     print(f"Results saved in directory {os.path.join(RESULTSDIR, results_fpath)}/")
 
-    if(args.tsne): #Creates t-SNE visualizations of dataset, train/test split, and queried active learning points
+    # Creates t-SNE visualizations of dataset, train/test split, and queried active learning points
+    if args.tsne:
         from sklearn.manifold import TSNE
         tsne_train_test_path = os.path.join(RESULTSDIR, results_fpath, "tsne_embedded_data")
         if not os.path.exists(tsne_train_test_path):
             X = utils.encodeMSTAR(model_fpath, use_phase=True)
-            tsne_embedded_data = TSNE(n_components=2).fit_transform(X)
+            tsne_embedded_data = TSNE(n_components=2, init='pca', learning_rate='auto').fit_transform(X)
             np.save(tsne_train_test_path, tsne_embedded_data)
             print(f"Results saved in directory {os.path.join(tsne_train_test_path)}/")
         else:
-            print(f"Found saved train/test t-sne at {tsne_train_test_path}")
+            print(f"Found saved train/test t-SNE embedding at {tsne_train_test_path}")
             tsne_embedded_data = np.load(tsne_train_test_path)
 
-        plt.figure() #Plot the t-SNE embedding of MSTAR
+        # Plot the t-SNE embedding of MSTAR
+        plt.figure()
         plt.scatter(tsne_embedded_data[:,0], tsne_embedded_data[:,1], c = labels, s=.5)
         plt.title("t-SNE Embedding of MSTAR Data")
         plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_embedding.png"))
 
-
-        plt.figure() #Visualize the train/test split with the t-SNE Embedding
+        # Visualize the train/test split with the t-SNE Embedding
+        plt.figure()
         plt.scatter(tsne_embedded_data[train_idx_all,0], tsne_embedded_data[train_idx_all,1], c = 'blue', label = "Train points", s=.5)
         plt.scatter(tsne_embedded_data[test_mask,0], tsne_embedded_data[test_mask,1], c = 'red', label = "Test points", s=.5)
         plt.title("t-SNE Embedding of Train Test Split")
@@ -190,13 +204,14 @@ if __name__ == "__main__":
             plt.savefig(os.path.join(RESULTSDIR, results_fpath, "tsne_" + method + "_points.png"))
 
 
-    if (args.plot): #Plots the accuracies of different active learning methods and saves to results folder
+    # Plots the accuracies of the tested active learning methods and saves to results folder
+    if args.plot:
 
         plt.figure()
 
         x = np.arange(args.num_per_class, args.num_per_class + args.iters + 1)
 
-        #General plot settings
+        # General plot settings
         legend_fontsize = 12
         label_fontsize = 16
         fontsize = 16

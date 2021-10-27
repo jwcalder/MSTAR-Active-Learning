@@ -1,3 +1,7 @@
+'''
+Code for running active learning acquisition functions.
+'''
+
 import numpy as np
 import graphlearning as gl
 from scipy import sparse
@@ -5,21 +9,36 @@ import scipy.sparse as sps
 from scipy.special import softmax
 from argparse import ArgumentParser
 
-def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_method = 'norm', plot=False, gamma=0.1):
+def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_method = 'norm', gamma=0.1):
+    '''
+    Main function for computing acquisition function values. All available methods are callable from this function.
+    Params:
+        - C_a : (M x M) numpy array, covariance matrix of current Gaussian Regression model with spectral truncation (M is number of eigenvalues)
+        - V : (N x M) numpy array, eigenvector matrix
+        - candidate_inds: (N,) numpy array, indices to calculate the acquisition function on. (Usually chosen to be all unlabeled nodes)
+        - u: (N x n_c) numpy array, current classifier, where the i^th row represents the prethresholded classifier on the i^th node
+        - method: str, which acquisition function to compute
+        - uncertainty_method: str, if method requires "uncertainty calculation" this string specifies which type of uncertainty measure to apply
+        - gamma: float, value of weighting in spectral truncated Gaussian Regression model. gamma=0 recovers Laplace Learning, which is numerically unstable for covariance matrix calculations.
+
+    Output:
+        - acq_vals: (len(candidate_inds), ) numpy array, acquisition function values on the specified candidate_inds nodes
+    '''
     assert method in ['uncertainty','vopt','mc','mcvopt']
 
-    #calculate uncertainty terms
+    # Calculate uncertainty terms
     num_classes = u.shape[1]
     u_probs = softmax(u[candidate_inds], axis=1)
     one_hot_predicted_labels = np.eye(num_classes)[np.argmax(u[candidate_inds], axis=1)]
 
-    uncertainty_methods = { #Dictionary to map uncertainty method to the uncertainty terms used in that method
-    "norm": np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1),
-    "entropy": np.max(u[candidate_inds], axis=1) - np.sum(u[candidate_inds]*np.log(u[candidate_inds]+.00001), axis=1),
-    "least_confidence": np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1),
-    "smallest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, num_classes-2]),
-    "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0]),
-    "random": np.random.random(u[candidate_inds].shape[0]),
+    # Dictionary to map uncertainty method to the uncertainty terms used in that method
+    uncertainty_methods = {
+        "norm": np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1),
+        "entropy": np.max(u[candidate_inds], axis=1) - np.sum(u[candidate_inds]*np.log(u[candidate_inds]+.00001), axis=1),
+        "least_confidence": np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1),
+        "smallest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, num_classes-2]),
+        "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0]),
+        "random": np.random.random(u[candidate_inds].shape[0]),
     }
 
     unc_terms = uncertainty_methods.get(uncertainty_method)
@@ -41,6 +60,17 @@ def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_m
         return unc_terms * col_norms **2. / diag_terms
 
 def update_C_a(C_a, V, Q, gamma=0.1):
+    '''
+    Function to update spectral truncation covariance matrix
+    Params:
+        - C_a: (M x M) numpy array, covariance matrix of current Gaussian Regression model with spectral truncation (M is number of eigenvalues)
+        - V : (N x M) numpy array, eigenvector matrix
+        - Q: (-1, ) numpy array or Python list, indices of chosen query points. (Implementation allows for batch update)
+        - gamma: float, value of weighting in spectral truncated Gaussian Regression model. gamma=0 recovers Laplace Learning, which is numerically unstable for covariance matrix calculations.
+
+    Output:
+        - C_a: updated covariance matrix
+    '''
     for k in Q:
         vk = V[k]
         Cavk = C_a @ vk
@@ -48,28 +78,60 @@ def update_C_a(C_a, V, Q, gamma=0.1):
         C_a -= np.outer(Cavk, Cavk)/(gamma**2. + ip)
     return C_a
 
-def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, all_train_idx=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', vals_norm = None, vecs_norm = None, verbose=True):
+def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, train_idx_all=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', vals_norm = None, vecs_norm = None, verbose=True):
+    '''
+    Function for handling overall active learning iteration process (1) compute/update SSL classifier and (2) select query points via acquisition function values
+
+    Params:
+        - W: (N x N) scipy sparse matrix, edge weight matrix of similarity graph
+        - evals: (N,) numpy array, eigenvalues of graph laplacian
+        - evecs: (N x M) numpy array, eigenvector matrix of graph Laplacian
+        - train_ind: (num_init_labeled,) numpy array, initially labeled index set
+        - labels: (num_init_labeled,) numpy array, labels (classifications) for initially labeled index set, train_ind
+        - num_iter: int, number of active learning iterations to perform
+        - method: str, string to specify which acquisition function to use for selecting the query set
+        - train_idx_all: (-1,) numpy array, indices of possible points to choose for active learning. (Allows to specify the train/test split as is necessary in MSTAR dataset)
+        - test_mask: (N,) boolean mask, identifies indices of testing set points for evaluating the accuracy of the graph-based ssl model at each iteration
+        - gamma: float, value of weighting in spectral truncated Gaussian Regression model. gamma=0 recovers Laplace Learning, which is numerically unstable for covariance matrix calculations.
+        - algorithm: str, string to specify which graph-based SSL model to use from GraphLearning (https://github.com/jwcalder/GraphLearning.git) function graph_ssl
+        - uncertainty_method: str, if method requires "uncertainty calculation" this string specifies which uncertainty measure to use
+        - vals_norm: (N, ) numpy array, eigenvalues of normalized graph laplacian (used for some specific graph_ssl methods from GraphLearning). Default is None
+        - vecs_norm: (N, M) numpy array, eigenvectors of normalized graph laplacian (used for some specific graph_ssl methods from GraphLearning). Default is None
+        - verbose: bool, flag to specify whether or not to output algorithm's accuracy throughout active learning process
+
+    Output:
+        - train_ind: (num_init_labeled + num_iter,) numpy array, indices of all labeled nodes resulting from active learning process. (Includes initially labeled nodes' indices)
+        - accuracy: (num_iter + 1,) numpy array, accuracies of graph-based ssl model at each step of the active learning process (including prior to any active learning queries)
+    '''
+
     assert method in ['random','uncertainty','vopt','mc','mcvopt']
+
+    # instantiate accuracy array and initial covariance matrix
     accuracy = np.array([])
     C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
 
+    # Run active learning iterations
     for i in range(num_iter+1):
         if i > 0:
-            if all_train_idx is None: # assume that all unlabeled indices are potential candidates for active learning
+            if train_idx_all is None: # assume that all unlabeled indices are potential candidates for active learning
                 candidate_inds = np.delete(np.arange(len(labels)), train_ind)
-            else:                     # candidate inds must be subset of given "all_train_idx"
-                candidate_inds = np.setdiff1d(all_train_idx, train_ind)
+            else:                     # candidate inds must be subset of given "train_idx_all"
+                candidate_inds = np.setdiff1d(train_idx_all, train_ind)
 
+            # acquisition function calculation
             if method == 'random':
                 train_ind = np.append(train_ind, np.random.choice(candidate_inds))
             else:
-                obj_vals = acquisition_function(C_a, evecs, candidate_inds, u, method, uncertainty_method = uncertainty_method, gamma=gamma)
+                obj_vals = acquisition_function(C_a, evecs, candidate_inds, u, method, uncertainty_method=uncertainty_method, gamma=gamma)
                 new_train_ind = candidate_inds[np.argmax(obj_vals)]
                 C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
                 train_ind = np.append(train_ind, new_train_ind)
 
-        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, vals = evals, vecs = evecs, vals_norm = vals_norm, vecs_norm = vecs_norm, return_vector=True)
+        # Compute/Update graph-based ssl model via call to GraphLearning graph_ssl function
+        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, vals=evals, vecs=evecs, vals_norm=vals_norm, vecs_norm=vecs_norm, return_vector=True)
         comp_labels = np.argmax(u, axis=1)
+
+        # Compute accuracy and record
         if test_mask is None:
             comp_acc = gl.accuracy(labels, comp_labels, len(train_ind))
         else:
@@ -86,6 +148,9 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, a
     return train_ind, accuracy
 
 def toy_dataset(return_X=False):
+    '''
+    Toy dataset construction used for testing the functions in this script.
+    '''
     #Load data, labels
     n=100
     np.random.seed(12) #set random seed
@@ -119,6 +184,10 @@ def toy_dataset(return_X=False):
     return gl.knn_weight_matrix(15, X), labels
 
 if __name__ == "__main__":
+    '''
+    If you call this file as a script, then will perform an active learning test on the toy dataset defined herein.
+        * Can run "python active_learning.py --help" to print out the argument descriptions for running this script
+    '''
     parser = ArgumentParser(description='Run active learning test on toy dataset.')
     parser.add_argument("--method", type=str, default='mcvopt', help="acquisition function for test. ['mc', 'mcvopt', 'vopt', 'uncertainty', 'random']")
     parser.add_argument("--iters", type=int, default=10, help="number of active learning iterations")
