@@ -25,25 +25,7 @@ def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_m
         - acq_vals: (len(candidate_inds), ) numpy array, acquisition function values on the specified candidate_inds nodes
     '''
     assert method in ['uncertainty','vopt','mc','mcvopt']
-
-    # Calculate uncertainty terms
-    num_classes = u.shape[1]
-    u_probs = softmax(u[candidate_inds], axis=1)
-    one_hot_predicted_labels = np.eye(num_classes)[np.argmax(u[candidate_inds], axis=1)]
-
-    # Dictionary to map uncertainty method to the uncertainty terms used in that method
-    uncertainty_methods = {
-        "norm": np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1),
-        "entropy": np.max(u[candidate_inds], axis=1) - np.sum(u[candidate_inds]*np.log(u[candidate_inds]+.00001), axis=1),
-        "least_confidence": np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1),
-        "smallest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, num_classes-2]),
-        "largest_margin": 1-(np.sort(u[candidate_inds])[:,num_classes-1] - np.sort(u[candidate_inds])[:, 0])
-    }
-
-    unc_terms = uncertainty_methods.get(uncertainty_method)
-
-    if method == 'uncertainty':
-        return unc_terms
+    assert uncertainty_method in ["norm", "entropy", "least_confidence", "smallest_margin", "largest_margin"]
 
     Cavk = C_a @ V[candidate_inds,:].T
     col_norms = np.linalg.norm(Cavk, axis=0)
@@ -51,6 +33,27 @@ def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_m
 
     if method == 'vopt':
         return col_norms**2. / diag_terms
+
+
+    # Calculate uncertainty terms based on string "uncertainty_method"
+    if uncertainty_method == "norm":
+        u_probs = softmax(u[candidate_inds], axis=1)
+        one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u[candidate_inds], axis=1)]
+        unc_terms = np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1)
+    elif uncertainty_method == "entropy":
+        u_probs = softmax(u[candidate_inds], axis=1)
+        unc_terms = np.max(u_probs, axis=1) - np.sum(u_probs*np.log(u_probs +.00001), axis=1)
+    elif uncertainty_method == "least_confidence":
+        unc_terms = np.ones((u[candidate_inds].shape[0],)) - np.max(u[candidate_inds], axis=1)
+    elif uncertainty_method == "smallest_margin":
+        u_sort = np.sort(u[candidate_inds])
+        unc_terms = 1.-(u_sort[:,-1] - u_sort[:,-2])
+    elif uncertainty_method == "largest_margin":
+        u_sort = np.sort(u[candidate_inds])
+        unc_terms = 1.-(u_sort[:,-1] - u_sort[:,0])
+
+    if method == 'uncertainty':
+        return unc_terms
 
     if method == 'mc':
         return unc_terms * col_norms / diag_terms
