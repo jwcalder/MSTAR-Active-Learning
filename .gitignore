@@ -1,8 +1,8 @@
 .ipynb_checkpoints/
 *.ipynb
 *.DS_Store
-Python/mstar_test*.py
+Python/mstar_test_*.py
 results/al_results/*
 eigData/
 *.pyc
-
+*old*
