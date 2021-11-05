@@ -34,8 +34,10 @@ cd Python
 python mstar_run_al.py --iters 200
 ```
 * A variety of flags are available for customizing this process; view them all via the ``--help`` flag in the above script call
-* __NGA-specific test__: the test requested by NGA is prepared with the correct variables in the script ``mstar_run_al_nga.py``.
-  * Has all the same flags and variables for adjusting this test, similar to main script ``mstar_run_al.py``
+
+## NGA-specific test
+The test requested by NGA is prepared with the correct variables in the script ``mstar_run_al_nga.py``.
+  * Has all the same flags and variables for adjusting this test, similar to main script ,``mstar_run_al.py``
 
 ### Data Pipeline Description and Active Learning
 For the sake of completeness, we briefly describe our overall data pipeline that feeds into our active learning setup:
