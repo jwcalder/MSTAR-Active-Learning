@@ -27,7 +27,7 @@ for i in range(numx):
 plt.show()
 ```
 
-# Run Active Learning (General Script)
+# Run Active Learning
 To run active learning tests on the MSTAR data, you can simply run the following code in the command line (terminal):
 ```
 cd Python
