@@ -9,7 +9,7 @@ import scipy.sparse as sps
 from scipy.special import softmax
 from argparse import ArgumentParser
 
-def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_method = 'norm', gamma=0.1):
+def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_method='smallest_margin', gamma=0.1):
     '''
     Main function for computing acquisition function values. All available methods are callable from this function.
     Params:
@@ -27,9 +27,10 @@ def acquisition_function(C_a, V, candidate_inds, u, method='vopt', uncertainty_m
     assert method in ['uncertainty','vopt','mc','mcvopt']
     assert uncertainty_method in ["norm", "entropy", "least_confidence", "smallest_margin", "largest_margin"]
 
-    Cavk = C_a @ V[candidate_inds,:].T
-    col_norms = np.linalg.norm(Cavk, axis=0)
-    diag_terms = (gamma**2. + np.array([np.inner(V[k,:], Cavk[:, i]) for i,k in enumerate(candidate_inds)]))
+    if method != 'uncertainty':
+        Cavk = C_a @ V[candidate_inds,:].T
+        col_norms = np.linalg.norm(Cavk, axis=0)
+        diag_terms = (gamma**2. + np.array([np.inner(V[k,:], Cavk[:, i]) for i,k in enumerate(candidate_inds)]))
 
     if method == 'vopt':
         return col_norms**2. / diag_terms
@@ -80,7 +81,7 @@ def update_C_a(C_a, V, Q, gamma=0.1):
         C_a -= np.outer(Cavk, Cavk)/(gamma**2. + ip)
     return C_a
 
-def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, train_idx_all=None, test_mask=None, gamma=0.1, algorithm='laplace', uncertainty_method = 'norm', vals_norm = None, vecs_norm = None, verbose=True):
+def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, train_idx_all=None, test_mask=None, gamma=0.1, by_class=False, algorithm='laplace', uncertainty_method='smallest_margin', vals_norm=None, vecs_norm=None, verbose=True):
     '''
     Function for handling overall active learning iteration process (1) compute/update SSL classifier and (2) select query points via acquisition function values
 
@@ -95,6 +96,7 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
         - train_idx_all: (-1,) numpy array, indices of possible points to choose for active learning. (Allows to specify the train/test split as is necessary in MSTAR dataset)
         - test_mask: (N,) boolean mask, identifies indices of testing set points for evaluating the accuracy of the graph-based ssl model at each iteration
         - gamma: float, value of weighting in spectral truncated Gaussian Regression model. gamma=0 recovers Laplace Learning, which is numerically unstable for covariance matrix calculations.
+        - by_class: bool, flag to indicate whether or not to sample points sequentially regardless of class labeling (by_class=False) or in a batch with one per class (by_class=True) at each iteration.
         - algorithm: str, string to specify which graph-based SSL model to use from GraphLearning (https://github.com/jwcalder/GraphLearning.git) function graph_ssl
         - uncertainty_method: str, if method requires "uncertainty calculation" this string specifies which uncertainty measure to use
         - vals_norm: (N, ) numpy array, eigenvalues of normalized graph laplacian (used for some specific graph_ssl methods from GraphLearning). Default is None
@@ -125,12 +127,25 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
 
             # acquisition function calculation
             if method == 'random':
-                train_ind = np.append(train_ind, np.random.choice(candidate_inds))
+                if by_class:
+                    pseudo_labels = comp_labels[candidate_inds]
+                    train_ind = np.append(train_ind, candidate_inds[gl.randomize_labels(pseudo_labels, 1)])
+                else:
+                    train_ind = np.append(train_ind, np.random.choice(candidate_inds))
             else:
                 obj_vals = acquisition_function(C_a, evecs, candidate_inds, u, method, uncertainty_method=uncertainty_method, gamma=gamma)
-                new_train_ind = candidate_inds[np.argmax(obj_vals)]
-                C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
-                train_ind = np.append(train_ind, new_train_ind)
+                if by_class:
+                    pseudo_labels = comp_labels[candidate_inds]
+                    new_train_inds = np.array([], dtype=int)
+                    for c in np.unique(pseudo_labels):
+                        c_mask = pseudo_labels == c
+                        new_train_inds = np.append(new_train_inds, (candidate_inds[c_mask])[np.argmax(obj_vals[c_mask])])
+                    C_a = update_C_a(C_a, evecs, new_train_inds, gamma=gamma)
+                    train_ind = np.append(train_ind, new_train_inds)
+                else:
+                    new_train_ind = candidate_inds[np.argmax(obj_vals)]
+                    C_a = update_C_a(C_a, evecs, [new_train_ind], gamma=gamma)
+                    train_ind = np.append(train_ind, new_train_ind)
 
         # Compute/Update graph-based ssl model via call to GraphLearning graph_ssl function
         u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, vals=evals, vecs=evecs, vals_norm=vals_norm, vecs_norm=vecs_norm, return_vector=True)
@@ -138,7 +153,7 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
 
         # Compute accuracy and record
         if test_mask is None:
-            comp_acc = gl.accuracy(labels, comp_labels, len(train_ind))
+            comp_acc = gl.accuracy(comp_labels, labels, len(train_ind))
         else:
             comp_acc = np.mean(labels[test_mask] == comp_labels[test_mask])
         if verbose:

@@ -1,5 +1,5 @@
 '''
-Main Python script for running overall active learning process tests on MSTAR data.
+Python script to run active learning test on MSTAR data, starting with 100 initially labeled points per class and label 100 more per class.
     * Run this script through command line (terminal).
     * View parameter descriptions with "python mstar_run_al.py --help"
 '''
@@ -22,10 +22,10 @@ import matplotlib.pyplot as plt
 from active_learning import *
 
 
-METHODS = ['random', 'uncertainty', 'mc', 'mcvopt', 'vopt']
+METHODS = ['random', 'uncertainty', 'mcvopt', 'mc']
 
 # Make sure results directory exists to put the active learning results
-RESULTSDIR = os.path.join("..", "results", "al_results")
+RESULTSDIR = os.path.join("..", "results", "nga_results")
 if not os.path.exists(RESULTSDIR):
     os.makedirs(RESULTSDIR)
 
@@ -35,23 +35,23 @@ if not os.path.exists(EIGDIR):
     os.makedirs(EIGDIR)
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description='Run active learning test on MSTAR dataset.')
+    parser = ArgumentParser(description='Run active learning test requested by NGA on MSTAR dataset.')
     parser.add_argument("--vae_fname", type=str, default="SAR10_CNNVAE", help="string of CNNVAE model name to use for representations, located in ./models directory. Ensure this is a VAE model by having string 'VAE' in the model name.")
     parser.add_argument("--iters", type=int, default=100, help="number of active learning iterations")
-    parser.add_argument("--by_class", type=bool, default=False, help="flag to indicate if select 1 point per (pseudo)class labeling at each active learning iteration")
+    parser.add_argument("--by_class", type=bool, default=True, help="flag to indicate if select 1 point per (pseudo)class labeling at each active learning iteration")
     parser.add_argument("--M", type=int, default=200, help="number of eigenvalues to use in truncation")
     parser.add_argument("--knn", type=int, default=20, help="number of knn to use in graph construction")
     parser.add_argument("--gamma", type=float, default=0.5, help="gamma constant for Gaussian Regression covariance calculations")
     parser.add_argument("--uncertainty_method", type=str, default="smallest_margin", help="string of uncertainty criterion to use ['smallest_margin', 'largest_margin', 'entropy', 'norm', 'least_confidence']")
     parser.add_argument("--seed", type=int, default=2, help="random number generator seed for train_ind choices")
-    parser.add_argument("--num_per_class", type=int, default=1, help="number of initially labeled points per class")
+    parser.add_argument("--num_per_class", type=int, default=100, help="number of initially labeled points per class")
     parser.add_argument("--algorithm", type=str, default="laplace", help="Graphlearning graph-based ssl algorithm to use for accuracy calculations")
     parser.add_argument("--plot", type=bool, default=False, help="Set to True to save plot of accuracy results")
     parser.add_argument("--tsne", type=bool, default=False, help="Set to True to visualize t-sne embedding of selected points")
     args = parser.parse_args()
 
     print("-"*30)
-    print(f"MSTAR GBSSL Active Learning Tests - Using {args.vae_fname} Representations")
+    print(f"MSTAR GBSSL Active Learning NGA Tests - Using {args.vae_fname} Representations")
     print("-"*30)
     print(f"\titers = {args.iters}, num_per_class = {args.num_per_class}, by_class = {args.by_class}")
     print(f"\tknn = {args.knn}, M (num evals) = {args.M}, uncertainty_method = {args.uncertainty_method}")
