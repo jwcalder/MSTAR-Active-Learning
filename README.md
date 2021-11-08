@@ -17,7 +17,7 @@ hdr,fields,mag,phase = utils.load_MSTAR()
 
 numx,numy = 3,3
 fig, axs = plt.subplots(numx,numy,figsize=(15,15))
-n = mag.shape[0]
+n = mag.shape[0]preprocessing
 R = np.random.permutation(n)
 for i in range(numx):
     for j in range(numy):
@@ -68,6 +68,7 @@ python CNN_graphlearning.py # apply graph learning on the CNN and VAE representa
 python generate_figures.py  # generate plot of accuracies of various ML models on the different CNN and VAE representations
 ```
 
+# Preprocessing
 The MSTAR raw data has already been preprocessed to extract the magnitude and phase images, crop to common sizes, and extract the header information from each image. To re-run any of this preprocessing, run the script
 ```
 python MSTARpreprocess.py
