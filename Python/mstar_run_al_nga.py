@@ -221,7 +221,7 @@ if __name__ == "__main__":
         # matplotlib.rcParams.update({'font.size': fontsize})
         styles = ['^b-','or-','dg-','pm-','xc-','sk-', '*y-']
 
-        skip = 12
+        skip = 2
 
         for i, method in enumerate(METHODS):
             plt.plot(x[::skip], 100*results_df[method + "_acc"][::skip], styles[i], label = method + " accuracy")
