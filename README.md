@@ -67,3 +67,9 @@ python CNN_ML.py            # apply a variety of ML methods on each of the learn
 python CNN_graphlearning.py # apply graph learning on the CNN and VAE representations
 python generate_figures.py  # generate plot of accuracies of various ML models on the different CNN and VAE representations
 ```
+
+The MSTAR raw data has already been preprocessed to extract the magnitude and phase images, crop to common sizes, and extract the header information from each image. To re-run any of this preprocessing, run the script
+```
+python MSTARpreprocess.py
+```
+To use the preprocessing script, you need to download the raw MSTAR .zip files and place them in an approproate directory for the script to access. Please see the header of the script for details.
