@@ -6,3 +6,4 @@ results/al_results/*
 eigData/
 *.pyc
 *old*
+*jason*
