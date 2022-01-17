@@ -80,6 +80,9 @@ def load_MSTAR(root_dir = '../Data'):
     mag = np.concatenate((mag_a,mag_b,mag_c))
     phase = np.concatenate((phase_a,phase_b,phase_c))
 
+    #Clip to [0,1] (only .18% of pixels>1)
+    mag[mag>1]=1
+
     return hdr, fields, mag, phase
 
 def train_test_split(hdr,train_fraction):
@@ -169,7 +172,7 @@ def targets_to_labels(hdr):
 
 def polar_transform(mag, phase):
     '''
-    Peform polar transormation of data from Coman, Thomas.
+    Peform polar transormation of data.
 
     Parameters
     ----------
@@ -181,9 +184,8 @@ def polar_transform(mag, phase):
         data : nx3 numpy array with (mag,real,imaginary)
     '''
 
-    #obtain real and imaginary parts of phase data
-    real_phase = NormalizeData(mag*np.cos(phase))
-    imaginary_phase = NormalizeData(mag*np.sin(phase))
-    data = np.stack((mag,real_phase,imaginary_phase),axis=1)
+    real = (mag*np.cos(phase) + 1)/2
+    imaginary = (mag*np.sin(phase) +1)/2
+    data = np.stack((mag,real,imaginary),axis=1)
 
     return data

@@ -7,3 +7,4 @@ eigData/
 *.pyc
 *old*
 *jason*
+Python/__pycache__/

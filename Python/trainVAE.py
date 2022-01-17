@@ -13,6 +13,8 @@ import graphlearning as gl
 import utils
 import models
 
+use_phase = True
+
 # Training function (1 epoch)
 def train(model, data, batch_size, device, optimizer, criterion):
     model.train()
@@ -34,7 +36,10 @@ def train(model, data, batch_size, device, optimizer, criterion):
 
 #Load data and stack mag,real phase, and imaginary phase together
 hdr, fields, mag, phase = utils.load_MSTAR()
-data = utils.polar_transform(mag, phase)
+if use_phase:
+    data = utils.polar_transform(mag, phase)
+else:
+    data = np.reshape(mag,(mag.shape[0],1,mag.shape[1],mag.shape[2]))
 data = torch.from_numpy(data).float()
 
 #Randomly shuffle data
@@ -63,7 +68,7 @@ for epoch in range(epochs):
 
     train_epoch_loss, recon_images = train(model, data, batch_size, device, optimizer, criterion)
     scheduler.step()
-    #save_image(recon_images.cpu(), '../figures/CNNVAE/recon_epoch%d.jpg'%epoch)
+#   save_image(recon_images.cpu(), '../figures/CNNVAE/recon_epoch%d.jpg'%epoch)
 
     print(f"Epoch {epoch+1} of {epochs}: ",end='')
     print(f"Train Loss: {train_epoch_loss:.4f}")

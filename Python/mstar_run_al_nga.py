@@ -85,14 +85,14 @@ if __name__ == "__main__":
     dataset, metric = args.vae_fname.split("_")
     train_idx_all = np.where(train_mask)[0]
 
-    # Graph Construction -- check if previously computed
     try:
-        I,J,D = gl.load_kNN_data(dataset, metric=metric)
+        knn_data = gl.weightmatrix.load_knn_data(dataset,metric=metric)
     except:
         X = utils.encodeMSTAR(model_fpath, use_phase=True)
-        I,J,D = gl.knnsearch_annoy(X,50,similarity='angular',dataset=dataset,metric=metric)
+        knn_data = gl.weightmatrix.knnsearch(X,50,similarity='angular',dataset=dataset,metric=metric)
 
-    W = gl.weight_matrix(I,J,D,args.knn)
+    #Build weight matrix
+    W = gl.weightmatrix.knn(None,args.knn,knn_data=knn_data)
     N = W.shape[0]
 
     # Calculate (or load in previously computed) eigenvalues and eigenvectors of
@@ -109,10 +109,11 @@ if __name__ == "__main__":
 
         # Also compute normalized graph laplacian eigenvectors for use in some GraphLearning graph_ssl functions (e.g. "mbo")
         n = W.shape[0]
-        deg = gl.degrees(W)
+        G = gl.graph(W)
+        deg = G.degree_vector()
         m = np.sum(deg)/2
         gamma = 0
-        Lnorm = gl.graph_laplacian(W,norm="normalized")
+        Lnorm = G.laplacian(normalization="normalized")
         def Mnorm(v):
             v = v.flatten()
             return (Lnorm*v).flatten() + (gamma/m)*(deg.T@v)*deg

@@ -129,7 +129,7 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
             if method == 'random':
                 if by_class:
                     pseudo_labels = comp_labels[candidate_inds]
-                    train_ind = np.append(train_ind, candidate_inds[gl.randomize_labels(pseudo_labels, 1)])
+                    train_ind = np.append(train_ind, candidate_inds[gl.trainsets.generate(pseudo_labels, rate=1)])
                 else:
                     train_ind = np.append(train_ind, np.random.choice(candidate_inds))
             else:
@@ -148,12 +148,12 @@ def active_learning_loop(W, evals, evecs, train_ind, labels, num_iter, method, t
                     train_ind = np.append(train_ind, new_train_ind)
 
         # Compute/Update graph-based ssl model via call to GraphLearning graph_ssl function
-        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm=algorithm, vals=evals, vecs=evecs, vals_norm=vals_norm, vecs_norm=vecs_norm, return_vector=True)
+        u = getattr(gl.ssl, algorithm)(W).fit(train_ind, labels[train_ind])
         comp_labels = np.argmax(u, axis=1)
 
         # Compute accuracy and record
         if test_mask is None:
-            comp_acc = gl.accuracy(comp_labels, labels, len(train_ind))
+            comp_acc = gl.ssl.ssl_accuracy(comp_labels, labels, len(train_ind))
         else:
             comp_acc = np.mean(labels[test_mask] == comp_labels[test_mask])
         if verbose:
@@ -199,9 +199,9 @@ def toy_dataset(return_X=False):
     labels = np.hstack([np.zeros(n),np.ones(n),np.zeros(n),np.ones(n),np.zeros(n),
                       np.ones(n),np.zeros(n),np.ones(n)]).astype('int')
     if return_X:
-        return gl.knn_weight_matrix(15, X), labels, X
+        return gl.weightmatrix.knn(X,15), labels, X
     #Return a knn weight matrix
-    return gl.knn_weight_matrix(15, X), labels
+    return gl.weightmatrix.knn(X,15), labels
 
 if __name__ == "__main__":
     '''
@@ -232,7 +232,7 @@ if __name__ == "__main__":
 
     # Set initial labeled set
     np.random.seed(2)
-    train_ind = gl.randomize_labels(labels, 1)
+    train_ind = gl.trainsets.generate(labels, rate=1)
     unlabeled_ind = np.delete(np.arange(W.shape[0]), train_ind)
     np.random.seed()
 
@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
     if args.plot:
         import matplotlib.pyplot as plt
-        u = gl.graph_ssl(W, train_ind, labels[train_ind], algorithm='laplace', return_vector=True)[:,1]
+        u = gl.ssl.laplace(W).fit(train_ind, labels[train_ind])[:,1]
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
         ax1.scatter(X[:,0], X[:,1], c=1.*(u >= 0.5))
         ax1.scatter(X[train_ind,0], X[train_ind,1], c='r', marker='^', s=100)

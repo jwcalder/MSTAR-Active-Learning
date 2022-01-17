@@ -25,7 +25,7 @@ labels, target_names = utils.targets_to_labels(hdr)
 #Open results file to write accuracy
 f_cnn_laplace = open('../results/SAR10_CNN_laplace_accuracy.csv',"w")
 f_cnn_laplace.write('Number of CNN Labels,Number of Labels,Accuracy\n')
-print('CNN\nNumber of CNN Labels,Number of Labels,Accuracy')
+print('Number of CNN Labels,Number of Labels,Accuracy')
 
 #Loop over CNN models and apply graph learning
 for i, model, fname_train_idx, num_train in zip(list(range(len(cnn_num_train))),cnn_models, cnn_train_idx, cnn_num_train):
@@ -38,13 +38,13 @@ for i, model, fname_train_idx, num_train in zip(list(range(len(cnn_num_train))),
     dataset = 'SAR10'
     metric = model[16:-3]
     try:
-        I,J,D = gl.load_kNN_data(dataset,metric=metric)
+        knn_data = gl.weightmatrix.load_knn_data(dataset,metric=metric)
     except:
         X = utils.encodeMSTAR(model, use_phase=True)
-        I,J,D = gl.knnsearch_annoy(X,50,similarity='angular',dataset=dataset,metric=metric)
+        knn_data = gl.weightmatrix.knnsearch(X,50,similarity='angular',dataset=dataset,metric=metric)
 
     #Build weight matrix
-    W = gl.weight_matrix(I,J,D,k)
+    W = gl.weightmatrix.knn(None,k,knn_data=knn_data)
 
     #Increase the labeled data from the CNN training set up to the full training set
     for j in range(i,np.max(all_train)):
@@ -54,47 +54,13 @@ for i, model, fname_train_idx, num_train in zip(list(range(len(cnn_num_train))),
         train_idx = index[train_mask]
 
         #Apply Graph Learning and compute accuracy on testing data
-        laplace_labels = gl.graph_ssl(W,train_idx,labels[train_idx],algorithm='laplace')
+        laplace_labels = gl.ssl.laplace(W).fit_predict(train_idx,labels[train_idx])
         laplace_acc = 100*np.mean(labels[test_mask] == laplace_labels[test_mask])
 
         print('%d,%d,%.2f'%(num_train,len(train_idx),laplace_acc))
         f_cnn_laplace.write('%d,%d,%.2f\n'%(num_train,len(train_idx),laplace_acc))
 
 f_cnn_laplace.close()
-
-#Now the CNNVAE results
-#Open results file to write accuracy
-f_cnnvae_laplace = open('../results/SAR10_CNNVAE_laplace_accuracy.csv',"w")
-f_cnnvae_laplace.write('Number of Labels,Accuracy\n')
-print('\nCNNVAE\nNumber of Labels,Accuracy')
-
-dataset = 'SAR10'
-metric = 'CNNVAE'
-try:
-    I,J,D = gl.load_kNN_data(dataset,metric=metric)
-except:
-    X = utils.encodeMSTAR('../models/SAR10_CNNVAE.pt', use_phase=True)
-    I,J,D = gl.knnsearch_annoy(X,50,similarity='angular',dataset=dataset,metric=metric)
-
-W = gl.weight_matrix(I,J,D,k)
-for j in range(np.max(all_train)):
-
-    #Get training data
-    train_mask = all_train <= j
-    train_idx = index[train_mask]
-
-    #Apply Graph Learning and compute accuracy on testing data
-    laplace_labels = gl.graph_ssl(W,train_idx,labels[train_idx],algorithm='laplace')
-    laplace_acc = 100*np.mean(labels[test_mask] == laplace_labels[test_mask])
-
-    print('%d,%.2f'%(len(train_idx),laplace_acc))
-    f_cnnvae_laplace.write('%d,%.2f\n'%(len(train_idx),laplace_acc))
-
-f_cnnvae_laplace.close()
-
-
-
-
 
 
 

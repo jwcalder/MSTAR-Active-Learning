@@ -25,6 +25,8 @@ learning_rate = 1    #Learning rate
 gamma = 0.9     #Learning rate step
 epochs = 50
 
+use_phase = True
+
 def train(model, device, data_train, target_train, optimizer, epoch, batch_size):
 
     model.train()
@@ -73,7 +75,10 @@ def test(model, device, data_test, target_test,name):
 
 #Load data and stack mag,real phase, and imaginary phase together
 hdr, fields, mag, phase = utils.load_MSTAR()
-data = utils.polar_transform(mag, phase)
+if use_phase:
+    data = utils.polar_transform(mag, phase)
+else:
+    data = np.reshape(mag,(mag.shape[0],1,mag.shape[1],mag.shape[2]))
 data = torch.from_numpy(data).float()
 
 #Convert target names to integer labels
