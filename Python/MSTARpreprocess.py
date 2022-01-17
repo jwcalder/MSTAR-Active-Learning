@@ -209,7 +209,7 @@ for d in dirs:
 #Restrict to data that was read
 hdr_data = hdr_data[:count]
 mag_data = mag_data[:count]
-phase_data = mag_data[:count]
+phase_data = phase_data[:count]
 
 #Now we crop to 88x88 pixels
 print('Cropping...')
