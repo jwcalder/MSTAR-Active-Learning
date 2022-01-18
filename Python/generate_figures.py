@@ -36,21 +36,21 @@ num_labels = num_labels[I]
 ax.plot(num_labels,laplace_accuracy,styles[1],label='CNN & Laplace')
 
 #CNN and ML
-#df_NN = pd.read_csv('../results/SAR10_CNN_NN_accuracy.csv')
-#df_RF = pd.read_csv('../results/SAR10_CNN_RF_accuracy.csv')
-#df_SVM = pd.read_csv('../results/SAR10_CNN_SVM_accuracy.csv')
-#ax.plot(num_labels,df_NN['Accuracy'].values[I],styles[2],label='CNN & NN')
+df_NN = pd.read_csv('../results/SAR10_CNN_NN_accuracy.csv')
+df_RF = pd.read_csv('../results/SAR10_CNN_RF_accuracy.csv')
+df_SVM = pd.read_csv('../results/SAR10_CNN_SVM_accuracy.csv')
+ax.plot(num_labels,df_NN['Accuracy'].values[I],styles[2],label='CNN & NN')
 #ax.plot(num_labels,df_RF['Accuracy'].values[I],styles[3],label='CNN & RF')
-#ax.plot(num_labels,df_SVM['Accuracy'].values[I],styles[4],label='CNN & SVM')
-#cnn_models, cnn_train_idx, cnn_num_train =  utils.get_cnn_models()
-#cnn_accuracy = np.zeros_like(laplace_accuracy)
-#max_cnn_accuracy = np.zeros_like(laplace_accuracy)
-#for i in range(len(cnn_models)):
-#    df = pd.read_csv('../results/SAR10_CNN_%d_accuracy.csv'%cnn_num_train[i])
-#    acc = df['Test Accuracy'].values
-#    cnn_accuracy[i] = acc[-1]
-#    #max_cnn_accuracy[i] = np.max(acc)
-#ax.plot(num_labels,cnn_accuracy,styles[5],label='CNN')
+ax.plot(num_labels,df_SVM['Accuracy'].values[I],styles[4],label='CNN & SVM')
+cnn_models, cnn_train_idx, cnn_num_train =  utils.get_cnn_models()
+cnn_accuracy = np.zeros_like(laplace_accuracy)
+max_cnn_accuracy = np.zeros_like(laplace_accuracy)
+for i in range(len(cnn_models)):
+    df = pd.read_csv('../results/SAR10_CNN_%d_accuracy.csv'%cnn_num_train[i])
+    acc = df['Test Accuracy'].values
+    cnn_accuracy[i] = acc[-1]
+    #max_cnn_accuracy[i] = np.max(acc)
+ax.plot(num_labels,cnn_accuracy,styles[5],label='CNN')
 #ax.plot(num_labels,max_cnn_accuracy,styles[2],label='CNNmax')
 
 #Labels and legends
