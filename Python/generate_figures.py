@@ -8,6 +8,12 @@ import numpy as np
 #Our package imports
 import utils
 
+def MSTAR_image(data,i):
+    img = np.hstack((data[i,0,:,:]**0.5,data[i,1,:,:],data[i,2,:,:]))
+    img[:,87:89]=1
+    img[:,175:177]=1
+    return img
+
 #General plot settings
 legend_fontsize = 12
 label_fontsize = 16
@@ -92,6 +98,15 @@ plt.grid(True)
 #Save figures
 plt.savefig('../figures/CNN_train.eps')
 plt.savefig('../figures/CNN_train.pdf')
+
+
+
+#Generic images
+hdr,fields,mag,phase = utils.load_MSTAR()
+data = utils.polar_transform(mag,phase)
+for i in range(10):
+    plt.imsave('../figures/MSTAR_image%d.png'%i, MSTAR_image(data,i), cmap='gray')
+
 
 
 
