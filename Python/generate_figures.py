@@ -66,3 +66,37 @@ plt.grid(True)
 #Save figures
 plt.savefig('../figures/CNN_Laplace.eps')
 plt.savefig('../figures/CNN_Laplace.pdf')
+
+#CNN Training Plots
+plt.figure()
+df = pd.read_csv('../results/SAR10_CNN_3671_accuracy.csv')
+epoch = df['Epoch'].values
+test_acc = df['Test Accuracy'].values
+train_acc = df['Train Accuracy'].values
+plt.plot(epoch,test_acc,'b-',label='Test Acc (100% of training data)')
+plt.plot(epoch,train_acc,'b--',label='Train Acc (100% of training data)')
+
+df = pd.read_csv('../results/SAR10_CNN_367_accuracy.csv')
+epoch = df['Epoch'].values
+test_acc = df['Test Accuracy'].values
+train_acc = df['Train Accuracy'].values
+plt.plot(epoch,test_acc,'r-',label='Test Acc (10% of training data))')
+plt.plot(epoch,train_acc,'r--',label='Train Acc (10% of training data)')
+
+plt.xlabel('Epoch',fontsize=label_fontsize)
+plt.ylabel('Accuracy (%)',fontsize=label_fontsize)
+plt.legend(loc='lower right',fontsize=legend_fontsize)
+plt.tight_layout()
+plt.grid(True)
+
+#Save figures
+plt.savefig('../figures/CNN_train.eps')
+plt.savefig('../figures/CNN_train.pdf')
+
+
+
+
+
+
+
+
