@@ -1,6 +1,10 @@
 # MSTAR-Active-Learning
 
-Python package for MSTAR data. To clone the package, run the command
+Ths is a Python package for running graph-based active learning algorithms on the [MSTAR](https://www.sdms.afrl.af.mil/index.php?collection=mstar) dataset. This package reproduces experiments from the paper
+
+K. Miller, X. Baca, J. Mauro, J. Setiadi, Z. Shi, J. Calder, and A. Bertozzi. [Graph-based active learning for semi-supervised classification of SAR data.](https://arxiv.org/abs/2204.00005), To appear in SPIE Defense and Commercial Sensing: Algorithms for Synthetic Aperture Radar Imagery XXIX, 2022.
+
+To clone the package, run the command
 ```
 git clone git@github.com:jwcalder/MSTAR-Active-Learning.git
 ```
